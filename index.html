@@ -566,37 +566,58 @@ document.getElementById('currencyToggle').textContent = currency === 'USD' ? '$'
 
 
 /* =========================================================
-   UNSPLASH — paste your Access Key below to pull real,
-   accurate photos for every card. Get one free at
-   unsplash.com/developers → Your apps → New Application.
-   Leave as "PASTE_ME" to fall back to keyword-matched photos.
+   IMAGE SOURCES — tries Google Custom Search (actual Google
+   Image results) first, then Unsplash, then leaves whatever
+   keyword-matched fallback photo was already showing.
+   Leave either key as "PASTE_ME" to skip that source.
    ========================================================= */
+const GOOGLE_CSE_KEY = "PASTE_ME";   // Google Cloud Console → Custom Search API key
+const GOOGLE_CSE_CX = "PASTE_ME";    // Programmable Search Engine ID (cx)
 const UNSPLASH_ACCESS_KEY = "ZCswCW10nvCMj0MkoMyplE60FaDHzeCgyR1Dqhk6vrU";
-const unsplashCache = JSON.parse(localStorage.getItem('unsplash-cache') || '{}');
+const imageCache = JSON.parse(localStorage.getItem('image-cache') || '{}');
+
+function cacheAndReturn(query, url){
+  imageCache[query] = url;
+  localStorage.setItem('image-cache', JSON.stringify(imageCache));
+  return url;
+}
+
+async function googleImageLookup(query){
+  if(GOOGLE_CSE_KEY === "PASTE_ME" || GOOGLE_CSE_CX === "PASTE_ME") return null;
+  try{
+    const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_KEY}&cx=${GOOGLE_CSE_CX}&searchType=image&num=1&safe=active&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    if(!res.ok) return null;
+    const data = await res.json();
+    return (data.items && data.items[0] && data.items[0].link) || null;
+  }catch(e){ console.error('Google image lookup failed', e); return null; }
+}
 
 async function unsplashLookup(query){
   if(UNSPLASH_ACCESS_KEY === "PASTE_ME") return null;
-  if(unsplashCache[query]) return unsplashCache[query];
   try{
     const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`, {
       headers:{ Authorization:`Client-ID ${UNSPLASH_ACCESS_KEY}` }
     });
     if(!res.ok) return null;
     const data = await res.json();
-    const url = data.results && data.results[0] && data.results[0].urls && data.results[0].urls.regular;
-    if(url){
-      unsplashCache[query] = url;
-      localStorage.setItem('unsplash-cache', JSON.stringify(unsplashCache));
-      return url;
-    }
-  }catch(e){ console.error('Unsplash lookup failed', e); }
+    return (data.results && data.results[0] && data.results[0].urls && data.results[0].urls.regular) || null;
+  }catch(e){ console.error('Unsplash lookup failed', e); return null; }
+}
+
+async function imageLookup(query){
+  if(imageCache[query]) return imageCache[query];
+  const google = await googleImageLookup(query);
+  if(google) return cacheAndReturn(query, google);
+  const unsplash = await unsplashLookup(query);
+  if(unsplash) return cacheAndReturn(query, unsplash);
   return null;
 }
 
 // Runs after first paint: swaps every data-photo-query image over to a
-// real Unsplash photo, a few at a time so we don't blow the free rate limit.
+// real photo, a few at a time so we don't blow either free rate limit.
 async function hydrateUnsplashImages(){
-  if(UNSPLASH_ACCESS_KEY === "PASTE_ME") return;
+  if(GOOGLE_CSE_KEY === "PASTE_ME" && UNSPLASH_ACCESS_KEY === "PASTE_ME") return;
   const imgs = Array.from(document.querySelectorAll('img[data-photo-query]'));
   const CONCURRENCY = 4;
   let i = 0;
@@ -604,7 +625,7 @@ async function hydrateUnsplashImages(){
     while(i < imgs.length){
       const img = imgs[i++];
       const q = img.dataset.photoQuery;
-      const url = await unsplashLookup(q);
+      const url = await imageLookup(q);
       if(url) img.src = url;
     }
   }
@@ -882,7 +903,7 @@ function dayCardHtml(day, idx){
   const itemsHtml = day.items.map(it=>{
     const match = findActivityFor(it.name, day.city);
     const media = match
-      ? `<img class="thumb" loading="lazy" src="${imgFor(match)}" data-photo-query="${escapeHtml((PHOTO_OVERRIDES[match.id]||match.name)+' japan')}" alt="">`
+      ? `<img class="thumb" loading="eager" src="${imgFor(match)}" data-photo-query="${escapeHtml((PHOTO_OVERRIDES[match.id]||match.name)+' japan')}" alt="">`
       : `<span class="ic">${ICONS[it.tag]||'•'}</span>`;
     return `<li>${media} ${escapeHtml(it.name)} ${it.price?`<span class="price">${escapeHtml(formatPrice(it.price))}</span>`:''}</li>`;
   }).join('') || '<li style="color:var(--dim); border:none;">Open day — nothing locked in yet.</li>';
@@ -917,7 +938,7 @@ function bannerHtml(city){
   const b = CITY_BANNERS[city];
   return `
     <div class="city-banner reveal city-${city}">
-      <img loading="lazy" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(city)} japan skyline" alt="${city}">
+      <img loading="eager" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(city)} japan skyline" alt="${city}">
       <div class="banner-fade"></div>
       <div class="banner-content">
         <div class="banner-name display">${city}</div>
@@ -1033,7 +1054,7 @@ function cardHtml(a){
   return `
     <div class="card reveal ${done?'is-done':''}" data-id="${a.id}">
       <div class="media">
-        <img loading="lazy" src="${imgFor(a)}" data-photo-query="${escapeHtml((PHOTO_OVERRIDES[a.id]||a.name)+' japan')}" alt="${escapeHtml(a.name)}">
+        <img loading="eager" src="${imgFor(a)}" data-photo-query="${escapeHtml((PHOTO_OVERRIDES[a.id]||a.name)+' japan')}" alt="${escapeHtml(a.name)}">
         <div class="media-fade"></div>
         <div class="card-top">
           <span class="chip-btn" style="pointer-events:none; padding:2px 9px; font-size:10px; border-color:${CAT_COLOR[a.category]}; color:${CAT_COLOR[a.category]}; background:rgba(10,10,13,0.55); backdrop-filter:blur(3px);">${CAT_LABEL[a.category]}</span>
@@ -1065,7 +1086,7 @@ function renderExplore(){
     return `
       <div class="explore-city-section" id="city-${city}">
         <div class="city-banner reveal city-${city}">
-          <img loading="lazy" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(city)} japan skyline" alt="${city}">
+          <img loading="eager" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(city)} japan skyline" alt="${city}">
           <div class="banner-fade"></div>
           <div class="banner-content">
             <div class="banner-name display">${city}<span class="section-count">${items.length} places</span></div>
@@ -1097,7 +1118,7 @@ function showSurprise(){
   overlay.innerHTML = `
     <div class="surprise-card">
       <div class="media" style="position:relative;">
-        <img loading="lazy" src="${imgFor(pick)}" data-photo-query="${escapeHtml((PHOTO_OVERRIDES[pick.id]||pick.name)+' japan')}" alt="${escapeHtml(pick.name)}">
+        <img loading="eager" src="${imgFor(pick)}" data-photo-query="${escapeHtml((PHOTO_OVERRIDES[pick.id]||pick.name)+' japan')}" alt="${escapeHtml(pick.name)}">
         <div class="media-fade"></div>
         <button class="surprise-close" id="surpriseClose">✕</button>
         <p class="s-name">${escapeHtml(pick.name)}</p>
