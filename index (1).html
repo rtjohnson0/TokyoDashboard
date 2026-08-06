@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>東京 ⟡ 大阪 ⟡ 京都 — Japan 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#0A0A0D;
+  --bg2:#16141C;
+  --bg3:#1E1B24;
+  --paper:#F2E9DC;
+  --dim:#948E9C;
+  --amber:#F4A63D;
+  --red:#FF4B3E;
+  --pink:#FF3D8A;
+  --jade:#3FBF8F;
+  --line:#2A2731;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(255,75,62,0.10), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 0%, rgba(244,166,61,0.10), transparent 55%),
+    var(--bg);
+  color:var(--paper);
+  font-family:'Zen Kaku Gothic New', sans-serif;
+  min-height:100vh;
+}
+.display{font-family:'Anton', sans-serif; letter-spacing:0.01em; text-transform:uppercase;}
+.mono{font-family:'IBM Plex Mono', monospace;}
+
+/* ===== Header ===== */
+header{
+  position:relative;
+  padding:0;
+  overflow:hidden;
+}
+.hero-media{position:relative; height:clamp(280px,46vw,420px); width:100%;}
+.hero-media img{width:100%; height:100%; object-fit:cover; display:block; filter:brightness(0.5) saturate(1.15);}
+.hero-media .hero-fade{
+  position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(10,10,13,0.25) 0%, rgba(10,10,13,0.35) 45%, var(--bg) 100%);
+}
+.hero-content{
+  position:absolute; left:0; right:0; bottom:0;
+  max-width:920px; margin:0 auto; padding:0 20px 22px;
+}
+.kicker{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:11px; letter-spacing:0.22em; text-transform:uppercase;
+  color:var(--paper); opacity:0.85; margin-bottom:8px;
+}
+.kicker b{color:var(--amber); opacity:1;}
+h1.title{
+  font-size:clamp(34px,7vw,58px);
+  margin:0;
+  line-height:0.95;
+  text-shadow:0 2px 24px rgba(0,0,0,0.6), 0 0 50px rgba(244,166,61,0.2);
+}
+h1.title .dot{color:var(--red);}
+.dates-row{
+  margin-top:14px; display:flex; gap:18px; flex-wrap:wrap;
+  font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--paper);
+}
+.dates-row .lbl{color:var(--dim); margin-right:6px;}
+
+/* ===== Nav tabs ===== */
+nav.tabs{
+  position:sticky; top:0; z-index:50;
+  background:rgba(10,10,13,0.88);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+  padding:10px 20px;
+}
+.tabs-inner{max-width:920px; margin:0 auto; display:flex; gap:6px;}
+.tab-btn{
+  flex:1; background:transparent; border:1px solid var(--line); color:var(--dim);
+  font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase;
+  padding:11px 8px; border-radius:6px; cursor:pointer; transition:all .15s;
+}
+.tab-btn.active{background:var(--red); border-color:var(--red); color:#100404; font-weight:600;}
+.tab-btn:hover:not(.active){border-color:var(--amber); color:var(--amber);}
+.currency-toggle{
+  background:var(--bg2); border:1px solid var(--line); color:var(--amber);
+  font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700;
+  padding:0 13px; border-radius:6px; cursor:pointer; flex-shrink:0;
+}
+.currency-toggle:hover{border-color:var(--amber);}
+
+/* ===== Trip status / countdown ===== */
+.trip-status{
+  border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin-bottom:22px;
+  background:linear-gradient(135deg, rgba(255,75,62,0.08), rgba(244,166,61,0.06)); text-align:center;
+}
+.trip-status .ts-label{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.15em; text-transform:uppercase; color:var(--dim); margin-bottom:10px;}
+.trip-status .ts-countdown{display:flex; justify-content:center; gap:22px;}
+.trip-status .ts-num{font-family:'Anton',sans-serif; font-size:32px; color:var(--amber); line-height:1;}
+.trip-status .ts-unit{font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--dim); text-transform:uppercase; margin-top:4px;}
+.trip-status .ts-big{font-family:'Anton',sans-serif; font-size:24px; color:var(--amber);}
+
+/* ===== Packing list ===== */
+.pack-add-form{display:flex; gap:8px; margin-bottom:18px;}
+.pack-add-form input{
+  flex:1; background:var(--bg2); border:1px solid var(--line); color:var(--paper);
+  padding:11px 14px; border-radius:8px; font-family:'Zen Kaku Gothic New',sans-serif; font-size:14px;
+}
+.pack-add-form button{
+  background:var(--amber); color:#1a1206; border:none; border-radius:8px; padding:0 18px;
+  font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700; cursor:pointer; text-transform:uppercase;
+}
+.pack-list{list-style:none; margin:0; padding:0;}
+.pack-list li{
+  display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--line);
+  border-radius:8px; margin-bottom:8px; background:var(--bg2);
+}
+.pack-check{
+  width:22px; height:22px; border-radius:5px; border:1px solid var(--line); background:transparent;
+  cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:transparent; font-size:13px;
+}
+.pack-check.done{background:var(--jade); border-color:var(--jade); color:#062016;}
+.pack-list li span.txt{flex:1; font-size:14px;}
+.pack-list li.done span.txt{color:var(--dim); text-decoration:line-through;}
+.pack-remove{background:none; border:none; color:var(--dim); cursor:pointer; font-size:14px;}
+.pack-remove:hover{color:var(--red);}
+
+main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
+.panel{display:none;}
+.panel.active{display:block; animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+
+/* ===== Section headers ===== */
+.sec-title{
+  font-family:'Anton',sans-serif; font-size:22px; letter-spacing:0.02em;
+  margin:0 0 4px; text-transform:uppercase;
+}
+.sec-sub{color:var(--dim); font-size:13px; margin-bottom:16px;}
+
+/* ===== Itinerary ===== */
+.day-card{
+  border:1px solid var(--line); border-radius:10px; background:var(--bg2);
+  margin-bottom:14px; overflow:hidden;
+}
+.day-head{
+  display:flex; align-items:center; gap:12px; padding:14px 16px;
+  border-bottom:1px solid var(--line); cursor:pointer;
+}
+.city-chip{
+  font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+  padding:3px 9px; border-radius:20px; border:1px solid; flex-shrink:0;
+}
+.city-Tokyo{color:var(--red); border-color:var(--red); background:rgba(255,75,62,0.08);}
+.city-Osaka{color:var(--amber); border-color:var(--amber); background:rgba(244,166,61,0.08);}
+.city-Kyoto{color:var(--jade); border-color:var(--jade); background:rgba(63,191,143,0.08);}
+.city-Travel{color:var(--pink); border-color:var(--pink); background:rgba(255,61,138,0.08);}
+.day-head .d-date{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--paper);}
+.day-head .d-title{font-weight:700; font-size:15px; margin-left:auto;}
+.day-head .chev{color:var(--dim); transition:transform .2s;}
+.day-card.open .chev{transform:rotate(90deg);}
+.day-body{display:none; padding:14px 16px 16px;}
+.day-card.open .day-body{display:block;}
+.day-note{font-size:13px; color:var(--dim); margin-bottom:10px; font-style:italic;}
+.plan-list{list-style:none; margin:0; padding:0;}
+.plan-list li{
+  display:flex; align-items:baseline; gap:8px; padding:6px 0; font-size:14px;
+  border-bottom:1px dashed var(--line);
+}
+.plan-list li:last-child{border-bottom:none;}
+.plan-list .tag{
+  font-family:'IBM Plex Mono',monospace; font-size:9px; padding:1px 6px; border-radius:8px;
+  color:var(--dim); border:1px solid var(--line); flex-shrink:0; text-transform:uppercase;
+}
+.plan-list .price{margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--amber); flex-shrink:0;}
+.lodging-strip{
+  margin-top:10px; padding-top:10px; border-top:1px solid var(--line);
+  font-size:12px; color:var(--dim); font-family:'IBM Plex Mono',monospace;
+}
+.lodging-strip b{color:var(--paper);}
+
+/* ===== City banner (itinerary section break) ===== */
+.city-banner{
+  position:relative; height:180px; border-radius:12px; overflow:hidden;
+  margin:30px 0 16px; background:var(--bg2);
+}
+.city-banner:first-child{margin-top:0;}
+.city-banner img{width:100%; height:100%; object-fit:cover; display:block; filter:brightness(0.55) saturate(1.1);}
+.city-banner .banner-fade{
+  position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(10,10,13,0.1) 0%, rgba(10,10,13,0.55) 60%, var(--bg) 100%);
+}
+.city-banner .banner-content{
+  position:absolute; left:20px; right:20px; bottom:14px;
+  display:flex; align-items:flex-end; justify-content:space-between; gap:10px; flex-wrap:wrap;
+}
+.city-banner .banner-name{
+  font-family:'Anton',sans-serif; font-size:clamp(30px,6vw,46px); line-height:0.9;
+  text-shadow:0 2px 18px rgba(0,0,0,0.6);
+}
+.city-banner.city-Tokyo .banner-name{color:var(--red);}
+.city-banner.city-Osaka .banner-name{color:var(--amber);}
+.city-banner.city-Kyoto .banner-name{color:var(--jade);}
+.city-banner .banner-dates{
+  font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--paper); opacity:0.9;
+  background:rgba(10,10,13,0.5); padding:5px 10px; border-radius:20px; backdrop-filter:blur(4px);
+}
+
+/* ===== Travel connector (between cities) ===== */
+.connector-row{
+  display:flex; align-items:center; gap:12px; margin:14px 0; padding:10px 14px;
+  border:1px dashed var(--line); border-radius:30px; background:var(--bg2);
+}
+.connector-row .track{flex:1; height:1px; background:repeating-linear-gradient(90deg, var(--pink) 0 6px, transparent 6px 12px);}
+.connector-row .c-icon{color:var(--pink); font-size:15px;}
+.connector-row .c-text{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--pink); white-space:nowrap;}
+.connector-row .c-date{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--dim); white-space:nowrap;}
+
+/* ===== Item icon row (redesigned plan list) ===== */
+.plan-list li .ic{font-size:13px; width:18px; text-align:center; flex-shrink:0;}
+
+/* ===== Book tab ===== */
+.lodging-row, .booking-row{
+  display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--line);
+  border-radius:8px; margin-bottom:8px; background:var(--bg2); flex-wrap:wrap;
+}
+.lodging-row .l-name{font-weight:700; font-size:14px; flex:1; min-width:160px;}
+.lodging-row .l-dates{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--dim);}
+.status-badge{
+  font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.06em; text-transform:uppercase;
+  padding:3px 10px; border-radius:20px; flex-shrink:0;
+}
+.status-badge.booked{background:rgba(63,191,143,0.12); color:var(--jade); border:1px solid var(--jade);}
+.status-badge.pending{background:rgba(255,75,62,0.12); color:var(--red); border:1px solid var(--red);}
+.booking-row .b-name{font-weight:700; font-size:14px; flex:1 1 100%;}
+.booking-row .b-meta{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--dim); flex:1;}
+.booking-row .b-days{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; padding:3px 10px; border-radius:20px;
+  border:1px solid var(--amber); color:var(--amber); white-space:nowrap;
+}
+.booking-row .b-days.urgent{border-color:var(--red); color:var(--red);}
+.booking-row .b-cal{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--paper); border:1px solid var(--line);
+  border-radius:6px; padding:6px 10px; text-decoration:none; white-space:nowrap;
+}
+.booking-row .b-cal:hover{border-color:var(--amber); color:var(--amber);}
+
+/* ===== Explore ===== */
+.surprise-btn{
+  display:block; width:100%; margin-bottom:16px; padding:13px;
+  background:linear-gradient(90deg, var(--red), var(--pink)); border:none; border-radius:10px;
+  color:#fff; font-family:'Anton',sans-serif; font-size:15px; letter-spacing:0.03em; text-transform:uppercase;
+  cursor:pointer; box-shadow:0 0 22px rgba(255,75,62,0.25);
+}
+.surprise-btn:hover{filter:brightness(1.08);}
+.surprise-overlay{
+  position:fixed; inset:0; background:rgba(6,6,8,0.8); backdrop-filter:blur(3px);
+  display:flex; align-items:center; justify-content:center; z-index:100; padding:20px;
+}
+.surprise-card{
+  max-width:340px; width:100%; background:var(--bg2); border:1px solid var(--line); border-radius:14px;
+  overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.5);
+}
+.surprise-card .media{height:190px; position:relative;}
+.surprise-card .media img{width:100%; height:100%; object-fit:cover;}
+.surprise-card .media .media-fade{position:absolute; inset:0; background:linear-gradient(180deg, transparent 40%, rgba(10,10,13,0.9) 100%);}
+.surprise-card .media .s-name{position:absolute; left:16px; right:16px; bottom:12px; margin:0; color:#fff; font-weight:700; font-size:18px; text-shadow:0 2px 8px rgba(0,0,0,0.7);}
+.surprise-card .s-body{padding:16px 18px 18px;}
+.surprise-card .s-meta{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--dim); margin-bottom:14px;}
+.surprise-actions{display:flex; gap:8px;}
+.surprise-actions button, .surprise-actions a{
+  flex:1; text-align:center; padding:10px; border-radius:8px; font-family:'IBM Plex Mono',monospace;
+  font-size:11.5px; text-transform:uppercase; letter-spacing:0.04em; cursor:pointer; text-decoration:none;
+  border:1px solid var(--line); color:var(--paper); background:transparent;
+}
+.surprise-actions .roll-again{border-color:var(--amber); color:var(--amber);}
+.surprise-close{
+  position:absolute; top:10px; right:10px; background:rgba(10,10,13,0.6); border:none; color:#fff;
+  width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:15px;
+}
+.filter-row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+.chip-btn{
+  background:var(--bg2); border:1px solid var(--line); color:var(--dim);
+  font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+  padding:8px 13px; border-radius:20px; cursor:pointer;
+}
+.chip-btn.active{background:var(--amber); border-color:var(--amber); color:#1a1206; font-weight:600;}
+.search-input{
+  width:100%; background:var(--bg2); border:1px solid var(--line); color:var(--paper);
+  padding:11px 14px; border-radius:8px; font-family:'Zen Kaku Gothic New',sans-serif; font-size:14px;
+  margin-bottom:16px;
+}
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px;}
+.card{
+  border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--bg2);
+  transition:box-shadow .2s, border-color .2s, transform .2s;
+}
+.card:hover{border-color:var(--amber); box-shadow:0 0 30px rgba(244,166,61,0.2); transform:translateY(-2px);}
+.card .media{position:relative; height:150px; background:var(--bg3);}
+.card .media img{width:100%; height:100%; object-fit:cover; display:block;}
+.card .media .media-fade{position:absolute; inset:0; background:linear-gradient(180deg, transparent 40%, rgba(10,10,13,0.85) 100%);}
+.card .media .card-top{position:absolute; left:10px; top:10px; right:10px; margin:0;}
+.card .media .card-name{position:absolute; left:12px; right:12px; bottom:8px; margin:0; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,0.7);}
+.card-body{padding:10px 14px 14px;}
+.card-top{display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap;}
+.card-name{font-weight:700; font-size:14.5px; margin:2px 0 6px; line-height:1.25;}
+.card-meta{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--dim); display:flex; justify-content:space-between; align-items:center; gap:6px;}
+.card-meta .price{color:var(--amber);}
+.card-actions{display:flex; gap:8px; margin-top:10px;}
+.map-link{
+  flex:1; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.04em;
+  text-transform:uppercase; color:var(--paper); border:1px solid var(--line); border-radius:6px;
+  padding:8px 6px; text-decoration:none;
+}
+.map-link:hover{border-color:var(--amber); color:var(--amber);}
+.done-btn{
+  border:1px solid var(--line); background:transparent; color:var(--dim); border-radius:6px;
+  padding:8px 12px; cursor:pointer; font-size:14px;
+}
+.done-btn.checked{background:var(--jade); border-color:var(--jade); color:#062016;}
+.card.is-done{opacity:0.5;}
+.book-note{font-size:11px; color:var(--pink); margin-top:6px; font-family:'IBM Plex Mono',monospace;}
+
+/* ===== Budget ===== */
+.budget-hero{border:1px solid var(--line); border-radius:12px; padding:20px 22px; margin-bottom:18px; background:var(--bg2);}
+.budget-hero-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
+.edit-budget-btn{
+  background:none; border:1px solid var(--line); color:var(--dim); border-radius:6px;
+  padding:4px 11px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.05em;
+  text-transform:uppercase; cursor:pointer;
+}
+.edit-budget-btn:hover{border-color:var(--amber); color:var(--amber);}
+.budget-hero-amount{font-size:34px; color:var(--paper); margin-bottom:14px;}
+.budget-bar-track{height:10px; border-radius:20px; background:var(--bg3); overflow:hidden; margin-bottom:12px;}
+.budget-bar-fill{height:100%; border-radius:20px; background:linear-gradient(90deg, var(--jade), var(--amber)); width:0%; transition:width .4s ease, background .3s;}
+.budget-bar-fill.over{background:var(--red);}
+.budget-hero-sub{display:flex; justify-content:space-between; font-size:13px; flex-wrap:wrap; gap:8px;}
+.budget-hero-sub .dim{color:var(--dim);}
+.budget-hero-sub b{font-weight:600;}
+.budget-hero-sub .amber{color:var(--amber);}
+.budget-edit-row{display:flex; gap:8px; align-items:center; margin-bottom:14px;}
+.budget-edit-row input{
+  background:var(--bg2); border:1px solid var(--line); color:var(--paper); border-radius:6px;
+  padding:8px 10px; font-family:'IBM Plex Mono',monospace; font-size:16px; width:140px;
+}
+.budget-edit-row button{
+  background:var(--amber); color:#1a1206; border:none; border-radius:6px; padding:8px 14px;
+  font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:700; cursor:pointer; text-transform:uppercase;
+}
+.stat{border:1px solid var(--line); border-radius:10px; padding:14px 16px; background:var(--bg2);}
+.stat-label{font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--dim);}
+.stat-value{font-family:'IBM Plex Mono',monospace; font-size:22px; margin-top:4px;}
+.stat-value.amber{color:var(--amber);}
+.est-box{
+  border:1px dashed var(--line); border-radius:10px; padding:14px 16px; margin-bottom:22px; background:var(--bg2);
+}
+.est-box .sec-title{font-size:15px;}
+.est-list{list-style:none; margin:8px 0 0; padding:0; font-size:12.5px; font-family:'IBM Plex Mono',monospace;}
+.est-list li{display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px dashed var(--line); color:var(--dim);}
+.est-list li b{color:var(--paper); font-weight:500;}
+.est-list li .p{color:var(--amber);}
+form.expense-form{display:grid; grid-template-columns:1.5fr 1fr 1fr 1fr auto; gap:8px; margin-bottom:20px; align-items:end;}
+form.expense-form label{display:block; font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--dim); margin-bottom:4px;}
+form.expense-form input, form.expense-form select{
+  width:100%; background:var(--bg2); border:1px solid var(--line); color:var(--paper);
+  border-radius:6px; padding:9px 10px; font-family:'Zen Kaku Gothic New',sans-serif; font-size:13px;
+}
+form.expense-form button{
+  background:var(--amber); color:#1a1206; border:none; border-radius:6px; padding:10px 14px;
+  font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700; cursor:pointer;
+  text-transform:uppercase; height:39px;
+}
+table.ledger{width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:13px;}
+table.ledger th{text-align:left; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--dim); border-bottom:1px solid var(--line); padding:8px;}
+table.ledger td{padding:9px 8px; border-bottom:1px solid var(--line);}
+.del-btn{background:none; border:none; color:var(--dim); cursor:pointer; font-size:14px;}
+.del-btn:hover{color:var(--red);}
+.empty{color:var(--dim); font-size:13px; padding:20px 0; text-align:center;}
+.sync-pill{
+  display:inline-flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace;
+  font-size:10.5px; color:var(--dim); margin-bottom:16px;
+}
+.sync-dot{width:7px; height:7px; border-radius:50%; background:var(--jade);}
+.sync-dot.off{background:var(--red);}
+
+footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:center;}
+
+@media(max-width:560px){
+  form.expense-form{grid-template-columns:1fr 1fr;}
+  form.expense-form button{grid-column:1/-1;}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
+
+/* ===== Scroll reveal ===== */
+.reveal{opacity:0; transform:translateY(14px); transition:opacity .5s ease, transform .5s ease;}
+.reveal.in{opacity:1; transform:none;}
+
+/* ===== Itinerary item thumbnails ===== */
+.plan-list li{align-items:center;}
+.plan-list .thumb{
+  width:36px; height:36px; border-radius:7px; object-fit:cover; flex-shrink:0;
+  background:var(--bg3); border:1px solid var(--line);
+}
+.plan-list .ic{width:36px; height:36px; border-radius:7px; background:var(--bg3); border:1px solid var(--line);
+  display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0;}
+
+/* ===== Explore: per-city sections ===== */
+.explore-city-section{margin-bottom:34px;}
+.explore-jump{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+.jump-pill{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+  padding:7px 14px; border-radius:20px; border:1px solid; text-decoration:none; cursor:pointer; background:none;
+}
+.jump-Tokyo{color:var(--red); border-color:var(--red);}
+.jump-Osaka{color:var(--amber); border-color:var(--amber);}
+.jump-Kyoto{color:var(--jade); border-color:var(--jade);}
+.section-count{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--dim); margin-left:8px;}
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hero-media">
+    <img id="heroImg" loading="eager" src="https://loremflickr.com/1200/500/tokyo,shibuya,night,neon" data-photo-query="Tokyo Shibuya crossing night neon" alt="Tokyo at night">
+    <div class="hero-fade"></div>
+  </div>
+  <div class="hero-content">
+    <div class="kicker">The Lads Takeover <b>Japan</b> · Shared Trip App</div>
+    <h1 class="title display">東京<span class="dot">・</span>大阪<span class="dot">・</span>京都</h1>
+    <div class="dates-row">
+      <div><span class="lbl">TRIP</span>Nov 27 – Dec 8, 2026</div>
+      <div><span class="lbl">RAIL PASS</span>7-day JR Pass</div>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="tabs-inner">
+    <button class="tab-btn active" data-tab="itinerary">Itinerary</button>
+    <button class="tab-btn" data-tab="explore">Explore</button>
+    <button class="tab-btn" data-tab="book">Book</button>
+    <button class="tab-btn" data-tab="pack">Pack</button>
+    <button class="tab-btn" data-tab="budget">Budget</button>
+    <button class="currency-toggle" id="currencyToggle">$</button>
+  </div>
+</nav>
+
+<main>
+  <!-- ITINERARY -->
+  <section class="panel active" id="panel-itinerary">
+    <div id="tripStatus"></div>
+    <div class="sec-title">Day by day</div>
+    <div class="sec-sub">Tap a day to expand. Lodging shown where you're staying that night.</div>
+    <div id="itineraryList"></div>
+  </section>
+
+  <!-- EXPLORE -->
+  <section class="panel" id="panel-explore">
+    <div class="sec-title">Everything on the list</div>
+    <div class="sec-sub">Filter by type, mark things off as you go — synced for both of you.</div>
+    <button class="surprise-btn" id="surpriseBtn">🎲 Surprise me</button>
+    <input type="text" class="search-input" id="searchBox" placeholder="Search a place...">
+    <div class="explore-jump" id="cityJump"></div>
+    <div class="filter-row" id="catFilters"></div>
+    <div id="exploreSections"></div>
+  </section>
+
+  <!-- BOOK -->
+  <section class="panel" id="panel-book">
+    <div class="sec-title">Reservations & deadlines</div>
+    <div class="sec-sub">Lodging status, then everything with a booking window — soonest first.</div>
+    <div id="lodgingList"></div>
+    <div class="sec-title" style="margin-top:26px; font-size:16px;">Book by date</div>
+    <div id="bookingList"></div>
+    <div class="sec-title" style="margin-top:22px; font-size:16px;">Book ahead — no fixed date</div>
+    <div id="noDeadlineList"></div>
+  </section>
+
+  <!-- PACK -->
+  <section class="panel" id="panel-pack">
+    <div class="sec-title">Packing list</div>
+    <div class="sec-sub">Synced between you both — check it off as it's packed.</div>
+    <form id="packForm" class="pack-add-form">
+      <input type="text" id="packInput" placeholder="Add an item...">
+      <button type="submit">Add</button>
+    </form>
+    <ul class="pack-list" id="packList"></ul>
+  </section>
+
+  <!-- BUDGET -->
+  <section class="panel" id="panel-budget">
+    <div class="sync-pill"><span class="sync-dot" id="syncDot"></span><span id="syncText">Connecting...</span></div>
+
+    <div class="budget-hero">
+      <div class="budget-hero-top">
+        <span class="stat-label">Trip budget</span>
+        <button class="edit-budget-btn" id="editBudgetBtn">Edit</button>
+      </div>
+      <div class="budget-hero-amount mono" id="budgetTotalDisplay">$4,000.00</div>
+      <div class="budget-bar-track"><div class="budget-bar-fill" id="budgetBarFill"></div></div>
+      <div class="budget-hero-sub">
+        <span><span class="dim">Spent</span> <b class="mono" id="statSpent">$0.00</b></span>
+        <span><span class="dim">Remaining</span> <b class="mono amber" id="statRemaining">$4,000.00</b></span>
+      </div>
+    </div>
+
+    <div class="est-box">
+      <div class="sec-title">Planned / booking costs (reference)</div>
+      <ul class="est-list" id="estList"></ul>
+    </div>
+
+    <form class="expense-form" id="expenseForm">
+      <div><label>Description</label><input type="text" id="expDesc" placeholder="e.g. Ramen in Shinjuku" required></div>
+      <div><label>Amount ($)</label><input type="number" id="expAmount" step="0.01" min="0" placeholder="0.00" required></div>
+      <div><label>Category</label>
+        <select id="expCategory"><option>Food</option><option>Lodging</option><option>Transit</option><option>Activities</option><option>Shopping</option><option>Bar/Night</option><option>Other</option></select>
+      </div>
+      <button type="submit">Add</button>
+    </form>
+
+    <table class="ledger">
+      <thead><tr><th>Item</th><th>Category</th><th style="text-align:right;">Amount</th><th></th></tr></thead>
+      <tbody id="ledgerBody"></tbody>
+    </table>
+    <div class="empty" id="ledgerEmpty">No expenses logged yet.</div>
+  </section>
+</main>
+
+<footer>Bookmark this page. Data syncs live between you both, and caches for spotty signal.</footer>
+
+<script>
+/* =========================================================
+   PERSISTENCE — local to this device/browser for now.
+   Shared live sync (Firebase) can be wired in later once the
+   front end is locked — see saveState()/initSync() below.
+   ========================================================= */
+const LOCAL_KEY = 'japan-trip-2026';
+
+/* =========================================================
+   CURRENCY TOGGLE — flips $ prices to an approximate ¥ figure
+   ========================================================= */
+const JPY_RATE = 150; // approximate, for reference only
+let currency = localStorage.getItem('currency-pref') || 'USD';
+
+function formatPrice(str){
+  if(!str || currency !== 'JPY') return str;
+  return str.replace(/\$([\d,]+(?:\.\d+)?)/g, (m, numStr)=>{
+    const num = parseFloat(numStr.replace(/,/g,''));
+    return '¥' + Math.round(num * JPY_RATE).toLocaleString();
+  });
+}
+
+document.getElementById('currencyToggle').addEventListener('click', ()=>{
+  currency = currency === 'USD' ? 'JPY' : 'USD';
+  localStorage.setItem('currency-pref', currency);
+  document.getElementById('currencyToggle').textContent = currency === 'USD' ? '$' : '¥';
+  renderItinerary();
+  renderExplore();
+  renderEstimates();
+});
+document.getElementById('currencyToggle').textContent = currency === 'USD' ? '$' : '¥';
+
+
+/* =========================================================
+   UNSPLASH — paste your Access Key below to pull real,
+   accurate photos for every card. Get one free at
+   unsplash.com/developers → Your apps → New Application.
+   Leave as "PASTE_ME" to fall back to keyword-matched photos.
+   ========================================================= */
+const UNSPLASH_ACCESS_KEY = "ZCswCW10nvCMj0MkoMyplE60FaDHzeCgyR1Dqhk6vrU";
+const unsplashCache = JSON.parse(localStorage.getItem('unsplash-cache') || '{}');
+
+async function unsplashLookup(query){
+  if(UNSPLASH_ACCESS_KEY === "PASTE_ME") return null;
+  if(unsplashCache[query]) return unsplashCache[query];
+  try{
+    const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`, {
+      headers:{ Authorization:`Client-ID ${UNSPLASH_ACCESS_KEY}` }
+    });
+    if(!res.ok) return null;
+    const data = await res.json();
+    const url = data.results && data.results[0] && data.results[0].urls && data.results[0].urls.regular;
+    if(url){
+      unsplashCache[query] = url;
+      localStorage.setItem('unsplash-cache', JSON.stringify(unsplashCache));
+      return url;
+    }
+  }catch(e){ console.error('Unsplash lookup failed', e); }
+  return null;
+}
+
+// Runs after first paint: swaps every data-photo-query image over to a
+// real Unsplash photo, a few at a time so we don't blow the free rate limit.
+async function hydrateUnsplashImages(){
+  if(UNSPLASH_ACCESS_KEY === "PASTE_ME") return;
+  const imgs = Array.from(document.querySelectorAll('img[data-photo-query]'));
+  const CONCURRENCY = 4;
+  let i = 0;
+  async function worker(){
+    while(i < imgs.length){
+      const img = imgs[i++];
+      const q = img.dataset.photoQuery;
+      const url = await unsplashLookup(q);
+      if(url) img.src = url;
+    }
+  }
+  await Promise.all(Array.from({length:CONCURRENCY}, worker));
+}
+
+/* =========================================================
+   ACTIVITY DATA — merged from your map list + bucket list doc
+   category: food | bar | activity | shop | photo
+   ========================================================= */
+const ACTIVITIES = [
+// --- TOKYO: food ---
+{id:'ichiran-shibuya', name:'ICHIRAN Shibuya', city:'Tokyo', category:'food', notes:'Ramen'},
+{id:'soul-food-house', name:'Soul Food House', city:'Tokyo', category:'food'},
+{id:'pizza-strada', name:'Pizza Strada', city:'Tokyo', category:'food'},
+{id:'grill-bon', name:'Grill Bon', city:'Tokyo', category:'food', notes:'Wagyu sandwich'},
+{id:'age3-ginza', name:'Age.3 GINZA', city:'Tokyo', category:'food', notes:'Sweet treat', price:''},
+{id:'cup-noodles', name:'Cup Noodles Museum', city:'Tokyo', category:'activity'},
+
+// --- TOKYO: bar/nightlife ---
+{id:'bar-centifolia', name:'Bar Centifolia', city:'Tokyo', category:'bar', notes:'Viral fancy bar — book 15 days ahead for a table, or walk up at open (~2am JST) for bar seating.', bookBy:'Book by Nov 15 (15 days before your Nov 30 visit), booking window opens midnight JST'},
+{id:'karaoke-kyobashi', name:'カラオケBar京橋秘密倶楽部 (Karaoke Bar)', city:'Tokyo', category:'bar'},
+{id:'music-bar-bounce', name:'MUSIC BAR BOUNCE', city:'Tokyo', category:'bar'},
+{id:'a10-jazz', name:'A10 (vinyl jazz bar)', city:'Tokyo', category:'bar'},
+{id:'ginza-music-bar', name:'GINZA MUSIC BAR (Jazz)', city:'Tokyo', category:'bar'},
+{id:'record-bar-analog', name:'RECORD BAR analog', city:'Tokyo', category:'bar'},
+{id:'pass-bar', name:'PASS (listening bar)', city:'Tokyo', category:'bar'},
+{id:'ebisu-bar', name:'Ebisu (listening bar)', city:'Tokyo', category:'bar'},
+{id:'musium-bar', name:'MUSIUM（ミュージーアム）', city:'Tokyo', category:'bar', notes:'Listening bar'},
+{id:'snack-three', name:'The Snack Three & Ginza Newborn', city:'Tokyo', category:'bar', notes:'Karaoke'},
+{id:'golden-gai', name:'Shinjuku Golden-Gai', city:'Tokyo', category:'bar', notes:'Bar hopping'},
+{id:'jdm-meet', name:'Tokyo Drift — Daikoku Parking Area (JDM car meet)', city:'Tokyo', category:'activity', price:'$150 pp', bookBy:'Book by Nov 1'},
+
+// --- TOKYO: activity ---
+{id:'teamlab-planets', name:'teamLab Planets TOKYO DMM', city:'Tokyo', category:'activity', price:'$23 pp', bookBy:'Book from Sept 1'},
+{id:'shibuya-sky', name:'Shibuya Sky', city:'Tokyo', category:'activity'},
+{id:'asakusa-sumo', name:'Asakusa Sumo Club', city:'Tokyo', category:'activity', price:'$102 pp', bookBy:'Book by Nov 6'},
+{id:'dawn-robot-cafe', name:'DAWN | Avatar Robot Cafe ver.β', city:'Tokyo', category:'activity'},
+{id:'tokyo-disney', name:'Tokyo Disneyland', city:'Tokyo', category:'activity'},
+{id:'tsukiji', name:'Tsukiji Outer Market', city:'Tokyo', category:'food', notes:'Travel-day food crawl'},
+{id:'ghibli-museum', name:'Ghibli Museum', city:'Tokyo', category:'activity'},
+{id:'mannen-yu', name:'Mannen-yu (Onsen)', city:'Tokyo', category:'activity'},
+{id:'hasunuma-onsen', name:'Hasunuma Onsen', city:'Tokyo', category:'activity'},
+{id:'todoroki-ravine', name:'Todoroki Ravine Park', city:'Tokyo', category:'activity'},
+{id:'tokyo-tower', name:'Tokyo Tower', city:'Tokyo', category:'activity'},
+{id:'tmg-building', name:'Tokyo Metropolitan Government Building', city:'Tokyo', category:'activity'},
+{id:'tokyo-solamachi', name:'Tokyo Solamachi', city:'Tokyo', category:'activity'},
+{id:'toyosu-market', name:'Toyosu Fish Market', city:'Tokyo', category:'activity'},
+{id:'sensoji', name:'Sensō-ji', city:'Tokyo', category:'activity'},
+{id:'yokohama-chinatown', name:'Yokohama Chinatown', city:'Tokyo', category:'food'},
+{id:'ikebukuro', name:'Ikebukuro (anime city)', city:'Tokyo', category:'shop'},
+{id:'yuri-cafe', name:'Yuri Cafe anchor (anime cafe)', city:'Tokyo', category:'food'},
+{id:'street-kart', name:'STREET KART Shibuya (Mario Kart)', city:'Tokyo', category:'activity', price:'$130', bookBy:'Book by Nov 1 on Klook'},
+
+// --- TOKYO: shop ---
+{id:'akihabara', name:'Akihabara', city:'Tokyo', category:'shop', notes:'Anime & gaming district'},
+{id:'akihabara-radio', name:'Akihabara Radio Kaikan', city:'Tokyo', category:'shop', notes:'Anime store'},
+{id:'stick-out', name:'Stick Out', city:'Tokyo', category:'shop', notes:'$5 thrifting'},
+{id:'shimokitazawa', name:'Shimokitazawa', city:'Tokyo', category:'shop', notes:'Thrifting, near Shibuya'},
+{id:'unu-glanta', name:'unu glänta shimokitazawa', city:'Tokyo', category:'shop', notes:'Custom ring'},
+{id:'kappabashi', name:'Kappabashi Kitchen Supply Town', city:'Tokyo', category:'shop'},
+{id:'takanojin', name:'Takanojin', city:'Tokyo', category:'shop'},
+{id:'harajuku-happyone', name:'原宿HAPPYONE 蔵治ビル店', city:'Tokyo', category:'shop', notes:'Custom chopsticks'},
+{id:'sando-lab', name:'SANDO LAB TOKYO 秋葉原店', city:'Tokyo', category:'shop'},
+{id:'atelier-bigi', name:'Atelier Bigi', city:'Tokyo', category:'shop', notes:'Watches'},
+{id:'sports-depo', name:'Sports Depo Shinjuku Flagship Store', city:'Tokyo', category:'shop', notes:'Shoe shopping'},
+{id:'nakano-broadway', name:'Nakano Broadway', city:'Tokyo', category:'shop', notes:'Anime'},
+
+// --- OSAKA ---
+{id:'amerikamura', name:'Amerikamura', city:'Osaka', category:'activity', notes:'Near the Airbnb'},
+{id:'dotonbori', name:'Dotonbori', city:'Osaka', category:'food', notes:'Street food & nightlife'},
+{id:'round1-osaka', name:'Round1 Stadium (Sennichimae)', city:'Osaka', category:'bar', notes:'Open until 6am'},
+{id:'dekasan-sando', name:'Dekasan三明治', city:'Osaka', category:'food', notes:'Egg sandwich breakfast'},
+{id:'osaka-castle', name:'Osaka Castle', city:'Osaka', category:'activity'},
+{id:'okonomiyaki-yukari', name:'Okonomiyaki Yukari (Sennichimae)', city:'Osaka', category:'food', notes:'Street food crawl'},
+{id:'osaka-aquarium', name:'Osaka Aquarium Kaiyukan', city:'Osaka', category:'activity', notes:'Closes 8pm'},
+{id:'teamlab-botanical', name:'teamLab Botanical Garden Osaka', city:'Osaka', category:'activity'},
+{id:'universal-studios', name:'Universal Studios Japan', city:'Osaka', category:'activity', bookBy:'Book by Sept 3 (~3 months before your Dec 3 visit — express passes and popular rides sell out)'},
+{id:'ghibli-park', name:'Ghibli Park', city:'Osaka', category:'activity'},
+{id:'ikoma-sanjo', name:'Ikoma Sanjo Amusement Park', city:'Osaka', category:'activity'},
+{id:'hozenji-yokocho', name:'Hozenji Yokocho', city:'Osaka', category:'bar'},
+{id:'magic-cafe-bar', name:'Magic Cafe & Bar Shinsekai', city:'Osaka', category:'bar'},
+{id:'nara-park', name:'Nara Park (Deer)', city:'Osaka', category:'activity', notes:'Day trip'},
+{id:'kobe-heso', name:'Kobe beef & Wagyu HESO', city:'Osaka', category:'food', notes:'Kobe day trip — hike + beef'},
+{id:'basketball-bar', name:'Basketball Bar Penetrate', city:'Osaka', category:'bar', notes:'Amerikamura'},
+{id:'taptap-ring', name:'TapTap', city:'Osaka', category:'shop', notes:'Custom ring from coin'},
+
+// --- KYOTO ---
+{id:'fushimi-inari', name:'Fushimi Inari Taisha', city:'Kyoto', category:'activity', notes:'Torii gates — go early'},
+{id:'hozugawa-boat', name:'Hozugawa River Boat Ride', city:'Kyoto', category:'activity', price:'$39', bookBy:'Books open Sept 9, reserve 9am–3pm window'},
+{id:'ito-okashi', name:'Ito Okashi', city:'Kyoto', category:'food', notes:'Breakfast'},
+{id:'uji', name:'Uji', city:'Kyoto', category:'photo'},
+{id:'ine', name:'Ine', city:'Kyoto', category:'photo'},
+{id:'hokanji', name:'Hōkan-ji Temple (Yasaka Pagoda)', city:'Kyoto', category:'activity'},
+{id:'kinkakuji', name:'Kinkaku-ji (Golden Pavilion)', city:'Kyoto', category:'activity', notes:'North of the other temples'},
+{id:'nishiki-market', name:'Nishiki Market', city:'Kyoto', category:'food'},
+{id:'gion', name:'Gion District', city:'Kyoto', category:'photo'},
+{id:'arashiyama', name:'Arashiyama Bamboo Forest', city:'Kyoto', category:'activity', notes:'Go early'},
+{id:'round1-kyoto', name:'Round One Stadium (Fushimi)', city:'Kyoto', category:'bar'},
+{id:'kitsune-kyoto', name:'Nightclub KITSUNE KYOTO', city:'Kyoto', category:'bar'},
+{id:'kuoe-kyoto', name:'KUOE KYOTO Omotesando', city:'Kyoto', category:'shop', notes:'Watches'},
+{id:'makers-watch', name:"Maker's Watch Knot", city:'Kyoto', category:'shop'},
+{id:'ichiran-kyoto', name:'ICHIRAN Kyoto Karasuma', city:'Kyoto', category:'food', notes:'Ramen'},
+{id:'hayakawa-knife', name:'Hayakawa Hamonoten', city:'Kyoto', category:'shop', notes:'Locally-owned knife shop'},
+{id:'hikiniku', name:'Hikiniku to Come', city:'Kyoto', category:'food', notes:'Hamburger — reservation or walk up in AM', bookBy:'Reservations open Oct 4 (or walk up in the morning)'},
+{id:'miyajima', name:'Miyajima', city:'Kyoto', category:'activity', notes:'Shrines & river views'},
+{id:'kiyomizu', name:'Kiyomizu-dera Temple', city:'Kyoto', category:'activity'},
+{id:'sannenzaka', name:'Sannenzaka', city:'Kyoto', category:'photo'},
+{id:'pontocho', name:'Pontocho', city:'Kyoto', category:'bar'},
+{id:'kimono-rental', name:'Kimono Rental', city:'Kyoto', category:'activity'},
+{id:'nakazakicho', name:'Nakazakichō Station', city:'Kyoto', category:'photo'},
+{id:'tenjinbashi', name:'Tenjin-bashi-suji', city:'Kyoto', category:'photo'},
+{id:'america-mura-kyoto', name:'America-mura', city:'Kyoto', category:'shop'},
+{id:'aeon-kyoto', name:'AEON MALL KYOTO', city:'Kyoto', category:'shop', notes:'Closes 9pm'},
+];
+
+const CAT_LABEL = {food:'Food', bar:'Bar / Night', activity:'Activity', shop:'Shopping', photo:'Photo Spot'};
+const CAT_COLOR = {food:'#F4A63D', bar:'#FF3D8A', activity:'#3FBF8F', shop:'#9E8CF5', photo:'#FF4B3E'};
+
+const CITY_BANNERS = {
+  Tokyo:{ photo:'tokyo,shibuya crossing,night,neon', dates:'Nov 28 – Dec 1 · Dec 7 – 8' },
+  Osaka:{ photo:'osaka,dotonbori,glico sign,night', dates:'Dec 1 – 4' },
+  Kyoto:{ photo:'kyoto,fushimi inari,torii gates', dates:'Dec 4 – 7' },
+};
+
+// More specific search terms for marquee spots so the photo actually
+// matches the place, instead of a generic city/name guess.
+const PHOTO_OVERRIDES = {
+  'teamlab-planets':'teamlab planets digital art',
+  'shibuya-sky':'shibuya sky observation deck tokyo',
+  'asakusa-sumo':'sumo wrestling ring japan',
+  'tsukiji':'tsukiji fish market tokyo',
+  'sensoji':'sensoji temple asakusa',
+  'tokyo-tower':'tokyo tower red night',
+  'golden-gai':'shinjuku golden gai alley',
+  'akihabara':'akihabara neon street tokyo',
+  'tokyo-disney':'tokyo disneyland castle',
+  'jdm-meet':'jdm car meet night japan',
+  'street-kart':'tokyo street go kart mario',
+  'dotonbori':'dotonbori glico sign osaka night',
+  'osaka-castle':'osaka castle',
+  'universal-studios':'universal studios japan entrance',
+  'osaka-aquarium':'osaka aquarium kaiyukan whale shark',
+  'nara-park':'nara park deer',
+  'amerikamura':'americamura osaka street',
+  'fushimi-inari':'fushimi inari torii gates kyoto',
+  'kinkakuji':'kinkakuji golden pavilion kyoto',
+  'kiyomizu':'kiyomizu dera temple kyoto',
+  'arashiyama':'arashiyama bamboo grove kyoto',
+  'gion':'gion district kyoto geisha alley',
+  'nishiki-market':'nishiki market kyoto food stalls',
+  'hozugawa-boat':'hozugawa river boat kyoto',
+  'kimono-rental':'kimono rental kyoto street',
+  'hokanji':'yasaka pagoda kyoto street',
+  'sannenzaka':'sannenzaka slope kyoto',
+  'akihabara-radio':'akihabara radio kaikan building',
+  'ichiran-shibuya':'ichiran ramen bowl',
+  'ichiran-kyoto':'ichiran ramen bowl',
+  'okonomiyaki-yukari':'okonomiyaki osaka street food',
+  'kobe-heso':'kobe beef wagyu steak',
+  'toyosu-market':'toyosu fish market tuna auction',
+};
+
+/* =========================================================
+   ITINERARY — mapped to real dates from your doc
+   ========================================================= */
+const ITINERARY = [
+  {date:'Fri, Nov 27', city:'Travel', title:'Depart for Japan', note:'Flights out.', items:[]},
+  {date:'Sat, Nov 28', city:'Tokyo', title:'Arrive + travel day', note:'Land, settle into Tokyo Stay 1.', items:[
+    {name:'Tsukiji Outer Market', tag:'food'}, {name:'Onsen (central Tokyo, near hotel)', tag:'activity'},
+  ], lodging:'Sotetsu Fresa Inn Tokyo Kyobashi (Stay 1, Nov 28 – Dec 1)'},
+  {date:'Sun, Nov 29', city:'Tokyo', title:'Ginza + West Tokyo loop', note:'Harajuku, Shibuya, Shimokitazawa, Shinjuku — all ~10 min apart on the Yamanote line.', items:[
+    {name:'Age.3 GINZA', tag:'food'}, {name:'Harajuku (watch stores)', tag:'shop'},
+    {name:'Shibuya Sky, ramen, listening bars', tag:'activity'}, {name:'Shimokitazawa (thrifting)', tag:'shop'},
+    {name:'Shinjuku — shoe shopping, Golden-Gai bar hopping, anime cafe', tag:'bar'},
+    {name:'JDM car meet — Daikoku PA (evening)', tag:'activity', price:'$150 pp'},
+  ]},
+  {date:'Mon, Nov 30', city:'Tokyo', title:'Excursions', note:'', items:[
+    {name:'teamLab Planets', tag:'activity', price:'$23 pp'},
+    {name:'Asakusa — temple + Sumo Club', tag:'activity', price:'$102 pp'},
+    {name:'Akihabara — anime & gaming, Sando Lab', tag:'shop'},
+    {name:'Mario Kart at night — Shibuya', tag:'activity', price:'$130'},
+    {name:'Bar Centifolia — book 15 days out for a table', tag:'bar'},
+    {name:'Onsen', tag:'activity'},
+  ]},
+  {date:'Tue, Dec 1', city:'Osaka', title:'Travel to Osaka', note:'', items:[
+    {name:'Amerikamura (near the Airbnb)', tag:'activity'}, {name:'Dotonbori', tag:'food'}, {name:'Round 1 Stadium — open til 6am', tag:'bar'},
+  ], lodging:'Airbnb, Nishishinsaibashi (Dec 1 – 4)'},
+  {date:'Wed, Dec 2', city:'Osaka', title:'Kobe day trip + Osaka', note:'', items:[
+    {name:'Dekasan — egg sandwich breakfast', tag:'food'}, {name:'Kobe day trip — hike + beef', tag:'food'},
+    {name:'Osaka Castle', tag:'activity'}, {name:'Okonomiyaki Yukari (Sennichimae)', tag:'food'},
+    {name:'Osaka Aquarium Kaiyukan — closes 8pm', tag:'activity'}, {name:'teamLab Botanical Garden Osaka', tag:'activity'},
+  ]},
+  {date:'Thu, Dec 3', city:'Osaka', title:'Universal Studios Japan', note:'', items:[{name:'Universal Studios Japan', tag:'activity'}]},
+  {date:'Fri, Dec 4', city:'Kyoto', title:'Travel to Kyoto (~30 min)', note:'', items:[
+    {name:'Hozugawa River Boat Ride — 9am–3pm window', tag:'activity', price:'$39'},
+    {name:'AEON MALL KYOTO — closes 9pm', tag:'shop'},
+  ], lodging:'Kyoto lodging TBD (Dec 4 – 7) — shortlisted: Via Inn Prime Kyoto Station, Hachijo Exit'},
+  {date:'Sat, Dec 5', city:'Kyoto', title:'Temple walk + Kimono', note:'Kiyomizu-dera, Sannenzaka, Yasaka Pagoda, Gion, Pontocho all walkable together. Kinkaku-ji is further north.', items:[
+    {name:'Kimono Rental', tag:'activity'}, {name:'Kiyomizu-dera Temple', tag:'activity'},
+    {name:'Sannenzaka → Yasaka Pagoda → Gion → Pontocho', tag:'photo'}, {name:'Kinkaku-ji (Golden Pavilion)', tag:'activity'},
+    {name:'Hikiniku to Come — reservation or walk-up AM', tag:'food'},
+  ]},
+  {date:'Sun, Dec 6', city:'Kyoto', title:'South Kyoto — go early', note:'', items:[
+    {name:'Fushimi Inari Shrine — early', tag:'activity'}, {name:'Arashiyama Bamboo Forest — early', tag:'activity'},
+    {name:'Nishiki Market', tag:'food'},
+  ]},
+  {date:'Mon, Dec 7', city:'Travel', title:'Travel to Nagoya, then Tokyo', note:'', items:[
+    {name:'Ghibli Museum', tag:'activity'},
+  ], lodging:'Tokyo Stay 2 (Dec 7 – 8) — TBD'},
+  {date:'Tue, Dec 8', city:'Travel', title:'Departure', note:'Flights home.', items:[]},
+];
+
+/* =========================================================
+   ESTIMATED / BOOKING COSTS (static reference, not synced)
+   ========================================================= */
+const ESTIMATES = [
+  {label:'Japan Rail Pass (7-day)', amount:'~$300 pp'},
+  {label:'Suica Card (Tokyo local travel)', amount:'~$20'},
+  {label:'JDM car meet', amount:'$150 pp'},
+  {label:'teamLab Planets', amount:'$23 pp'},
+  {label:'Asakusa Sumo Club', amount:'$102 pp'},
+  {label:'Mario Kart night ride', amount:'$130'},
+  {label:'Hozugawa River Boat', amount:'$39'},
+  {label:'Lodging total (est.)', amount:'$2,900–$3,200'},
+];
+
+const LODGING = [
+  {city:'Tokyo', label:'Stay 1', dates:'Nov 28 – Dec 1', place:'Sotetsu Fresa Inn Tokyo Kyobashi', booked:true},
+  {city:'Osaka', label:'', dates:'Dec 1 – 4', place:'Airbnb, Nishishinsaibashi', booked:true},
+  {city:'Kyoto', label:'', dates:'Dec 4 – 7', place:'Via Inn Prime Kyoto Station, Hachijo Exit', booked:true},
+  {city:'Tokyo', label:'Stay 2', dates:'Dec 7 – 8', place:'Details TBD', booked:true},
+];
+
+// Big-ticket items worth booking ahead but with no fixed deadline in the plan
+const NO_DEADLINE_IDS = ['kimono-rental', 'osaka-aquarium', 'tokyo-disney', 'ghibli-museum'];
+
+/* =========================================================
+   STATE
+   ========================================================= */
+const DEFAULT_PACKING = [
+  'JR Pass voucher', 'Suica/IC card', 'Portable wifi or SIM', 'Passport',
+  'Travel adapter', 'Compression bags (Daiso/Don Quijote)', 'Comfortable walking shoes',
+  'Cash (yen)', 'Portable charger', 'Umbrella / light rain jacket', 'Layers for cold weather',
+];
+let sharedState = { expenses:[], doneIds:{}, budgetTotal:4000, packing:null };
+
+function imgFor(item, size){
+  size = size || '400/300';
+  const raw = PHOTO_OVERRIDES[item.id] || `${item.name.replace(/[（）()「」【】]/g,'')},${item.city},japan`;
+  const q = encodeURIComponent(raw);
+  return `https://loremflickr.com/${size}/${q}`;
+}
+function cityBannerImg(city){
+  const b = CITY_BANNERS[city];
+  return `https://loremflickr.com/900/400/${encodeURIComponent(b.photo)}`;
+}
+function mapUrl(item){
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name + ' ' + item.city + ' Japan')}`;
+}
+
+/* ---------- Itinerary render ---------- */
+const ICONS = {food:'🍜', bar:'🍸', activity:'✦', shop:'🛍', photo:'📷'};
+
+function findActivityFor(itemName, city){
+  const norm = s => s.toLowerCase().replace(/[（）()「」【】]/g,'').trim();
+  const n = norm(itemName);
+  let pool = ACTIVITIES.filter(a=> city==='Travel' ? true : a.city===city);
+  let hit = pool.find(a => n.includes(norm(a.name)) || norm(a.name).includes(n.split(' — ')[0].split(' (')[0]));
+  if(!hit) hit = ACTIVITIES.find(a => n.includes(norm(a.name)));
+  return hit;
+}
+
+function dayCardHtml(day, idx){
+  const itemsHtml = day.items.map(it=>{
+    const match = findActivityFor(it.name, day.city);
+    const media = match
+      ? `<img class="thumb" loading="lazy" src="${imgFor(match)}" data-photo-query="${escapeHtml((PHOTO_OVERRIDES[match.id]||match.name)+' japan')}" alt="">`
+      : `<span class="ic">${ICONS[it.tag]||'•'}</span>`;
+    return `<li>${media} ${escapeHtml(it.name)} ${it.price?`<span class="price">${escapeHtml(formatPrice(it.price))}</span>`:''}</li>`;
+  }).join('') || '<li style="color:var(--dim); border:none;">Open day — nothing locked in yet.</li>';
+  return `
+    <div class="day-card reveal${idx===0?' open':''}">
+      <div class="day-head">
+        <span class="city-chip city-${day.city}">${day.city}</span>
+        <span class="d-date mono">${day.date}</span>
+        <span class="d-title">${escapeHtml(day.title)}</span>
+        <span class="chev">▸</span>
+      </div>
+      <div class="day-body">
+        ${day.note?`<div class="day-note">${escapeHtml(day.note)}</div>`:''}
+        <ul class="plan-list">${itemsHtml}</ul>
+        ${day.lodging?`<div class="lodging-strip">🛏 <b>Staying:</b> ${escapeHtml(day.lodging)}</div>`:''}
+      </div>
+    </div>`;
+}
+
+function connectorHtml(day){
+  return `
+    <div class="connector-row" style="${day.lodging?'flex-wrap:wrap;':''}">
+      <span class="c-icon">🚄</span>
+      <span class="c-text">${escapeHtml(day.title)}</span>
+      <span class="track"></span>
+      <span class="c-date mono">${escapeHtml(day.date)}</span>
+      ${day.lodging?`<div style="flex-basis:100%; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--dim); padding-left:27px;">🛏 ${escapeHtml(day.lodging)}</div>`:''}
+    </div>`;
+}
+
+function bannerHtml(city){
+  const b = CITY_BANNERS[city];
+  return `
+    <div class="city-banner reveal city-${city}">
+      <img loading="lazy" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(city)} japan skyline" alt="${city}">
+      <div class="banner-fade"></div>
+      <div class="banner-content">
+        <div class="banner-name display">${city}</div>
+        <div class="banner-dates mono">${b.dates}</div>
+      </div>
+    </div>`;
+}
+
+const TRIP_START = new Date('2026-11-27T00:00:00');
+const TRIP_END = new Date('2026-12-08T23:59:59');
+
+function renderTripStatus(){
+  const el = document.getElementById('tripStatus');
+  const now = new Date();
+  let html = '';
+  if(now < TRIP_START){
+    const diff = TRIP_START - now;
+    const days = Math.floor(diff/86400000);
+    const hours = Math.floor((diff%86400000)/3600000);
+    const mins = Math.floor((diff%3600000)/60000);
+    html = `
+      <div class="trip-status">
+        <div class="ts-label">Time until departure</div>
+        <div class="ts-countdown">
+          <div><div class="ts-num">${days}</div><div class="ts-unit">days</div></div>
+          <div><div class="ts-num">${hours}</div><div class="ts-unit">hours</div></div>
+          <div><div class="ts-num">${mins}</div><div class="ts-unit">min</div></div>
+        </div>
+      </div>`;
+  } else if(now <= TRIP_END){
+    const dayNum = Math.floor((now - TRIP_START)/86400000) + 1;
+    html = `<div class="trip-status"><div class="ts-label">You're in Japan</div><div class="ts-big">Day ${dayNum} of 12</div></div>`;
+  } else {
+    html = `<div class="trip-status"><div class="ts-label">Trip complete</div><div class="ts-big">お帰りなさい 🎌</div></div>`;
+  }
+  el.innerHTML = html;
+}
+setInterval(renderTripStatus, 60000);
+
+function renderItinerary(){
+  renderTripStatus();
+  const wrap = document.getElementById('itineraryList');
+  let html = '';
+  let lastCity = null;
+  ITINERARY.forEach((day, idx)=>{
+    if(day.city === 'Travel'){
+      html += connectorHtml(day);
+      lastCity = null; // force next real city to show a fresh banner
+      return;
+    }
+    if(day.city !== lastCity){
+      html += bannerHtml(day.city);
+      lastCity = day.city;
+    }
+    html += dayCardHtml(day, idx);
+  });
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('.day-head').forEach(h=>{
+    h.addEventListener('click', ()=> h.closest('.day-card').classList.toggle('open'));
+  });
+  hydrateUnsplashImages();
+  observeReveals();
+}
+
+let revealObserver = null;
+function observeReveals(){
+  if(!revealObserver){
+    revealObserver = new IntersectionObserver(entries=>{
+      entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); revealObserver.unobserve(e.target); } });
+    }, {threshold:0.1, rootMargin:'0px 0px -40px 0px'});
+  }
+  document.querySelectorAll('.reveal:not(.in)').forEach(el=> revealObserver.observe(el));
+}
+
+/* ---------- Explore render ---------- */
+let activeCat = 'all';
+let searchTerm = '';
+const CITIES = ['Tokyo','Osaka','Kyoto'];
+
+function renderFilters(){
+  document.getElementById('cityJump').innerHTML = CITIES.map(c=>
+    `<a class="jump-pill jump-${c}" href="#city-${c}">${c}</a>`
+  ).join('');
+  const cats = ['all', ...Object.keys(CAT_LABEL)];
+  document.getElementById('catFilters').innerHTML = cats.map(c=>
+    `<button class="chip-btn ${c===activeCat?'active':''}" data-cat="${c}">${c==='all'?'All types':CAT_LABEL[c]}</button>`
+  ).join('');
+  document.querySelectorAll('#catFilters .chip-btn').forEach(b=>b.addEventListener('click',()=>{activeCat=b.dataset.cat; renderFilters(); renderExplore();}));
+}
+
+function parseBookByDate(text){
+  if(!text) return null;
+  const map3 = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  const m = text.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})/i);
+  if(!m) return null;
+  const mon = map3[m[1].toLowerCase().slice(0,3)];
+  if(mon===undefined) return null;
+  return new Date(Date.UTC(2026, mon, parseInt(m[2],10)));
+}
+function gcalUrl(item){
+  const date = parseBookByDate(item.bookBy);
+  if(!date) return null;
+  const d0 = date.toISOString().slice(0,10).replace(/-/g,'');
+  const d1 = new Date(date.getTime()+86400000).toISOString().slice(0,10).replace(/-/g,'');
+  const text = encodeURIComponent('Book: ' + item.name);
+  const details = encodeURIComponent(item.bookBy + (item.notes ? (' — ' + item.notes) : ''));
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${d0}/${d1}&details=${details}`;
+}
+
+function cardHtml(a){
+  const done = !!sharedState.doneIds[a.id];
+  const cal = gcalUrl(a);
+  return `
+    <div class="card reveal ${done?'is-done':''}" data-id="${a.id}">
+      <div class="media">
+        <img loading="lazy" src="${imgFor(a)}" data-photo-query="${escapeHtml((PHOTO_OVERRIDES[a.id]||a.name)+' japan')}" alt="${escapeHtml(a.name)}">
+        <div class="media-fade"></div>
+        <div class="card-top">
+          <span class="chip-btn" style="pointer-events:none; padding:2px 9px; font-size:10px; border-color:${CAT_COLOR[a.category]}; color:${CAT_COLOR[a.category]}; background:rgba(10,10,13,0.55); backdrop-filter:blur(3px);">${CAT_LABEL[a.category]}</span>
+        </div>
+        <div class="card-name">${escapeHtml(a.name)}</div>
+      </div>
+      <div class="card-body">
+        <div class="card-meta"><span>${escapeHtml(a.notes||'')}</span>${a.price?`<span class="price">${escapeHtml(formatPrice(a.price))}</span>`:''}</div>
+        ${a.bookBy?`<div class="book-note">⏰ ${escapeHtml(a.bookBy)} ${cal?`<a href="${cal}" target="_blank" rel="noopener" style="color:var(--amber); text-decoration:underline;">Add to calendar</a>`:''}</div>`:''}
+        <div class="card-actions">
+          <a class="map-link" target="_blank" rel="noopener" href="${mapUrl(a)}">Open map</a>
+          <button class="done-btn ${done?'checked':''}" data-id="${a.id}">${done?'✓':'—'}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+
+function renderExplore(){
+  const wrap = document.getElementById('exploreSections');
+  const matches = a=>{
+    if(activeCat!=='all' && a.category!==activeCat) return false;
+    if(searchTerm && !a.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    return true;
+  };
+  wrap.innerHTML = CITIES.map(city=>{
+    const items = ACTIVITIES.filter(a=>a.city===city && matches(a));
+    if(items.length===0) return '';
+    return `
+      <div class="explore-city-section" id="city-${city}">
+        <div class="city-banner reveal city-${city}">
+          <img loading="lazy" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(city)} japan skyline" alt="${city}">
+          <div class="banner-fade"></div>
+          <div class="banner-content">
+            <div class="banner-name display">${city}<span class="section-count">${items.length} places</span></div>
+          </div>
+        </div>
+        <div class="grid">${items.map(cardHtml).join('')}</div>
+      </div>`;
+  }).join('') || '<div class="empty">Nothing matches those filters.</div>';
+
+  wrap.querySelectorAll('.done-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.id;
+      sharedState.doneIds[id] = !sharedState.doneIds[id];
+      saveState();
+      renderExplore();
+    });
+  });
+  hydrateUnsplashImages();
+  observeReveals();
+}
+
+/* ---------- Surprise me ---------- */
+function showSurprise(){
+  const pool = ACTIVITIES.filter(a=>!sharedState.doneIds[a.id]);
+  const source = pool.length ? pool : ACTIVITIES;
+  const pick = source[Math.floor(Math.random()*source.length)];
+  const overlay = document.createElement('div');
+  overlay.className = 'surprise-overlay';
+  overlay.innerHTML = `
+    <div class="surprise-card">
+      <div class="media" style="position:relative;">
+        <img loading="lazy" src="${imgFor(pick)}" data-photo-query="${escapeHtml((PHOTO_OVERRIDES[pick.id]||pick.name)+' japan')}" alt="${escapeHtml(pick.name)}">
+        <div class="media-fade"></div>
+        <button class="surprise-close" id="surpriseClose">✕</button>
+        <p class="s-name">${escapeHtml(pick.name)}</p>
+      </div>
+      <div class="s-body">
+        <div class="s-meta">${CAT_LABEL[pick.category]} · ${pick.city}${pick.price?` · ${escapeHtml(formatPrice(pick.price))}`:''}</div>
+        <div class="surprise-actions">
+          <button class="roll-again" id="rollAgain">🎲 Roll again</button>
+          <a target="_blank" rel="noopener" href="${mapUrl(pick)}">Open map</a>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  hydrateUnsplashImages();
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#surpriseClose').addEventListener('click', ()=> overlay.remove());
+  overlay.querySelector('#rollAgain').addEventListener('click', ()=>{ overlay.remove(); showSurprise(); });
+}
+document.getElementById('surpriseBtn').addEventListener('click', showSurprise);
+
+/* ---------- Book tab ---------- */
+function renderBookings(){
+  document.getElementById('lodgingList').innerHTML = LODGING.map(l=>`
+    <div class="lodging-row">
+      <span class="status-badge ${l.booked?'booked':'pending'}">${l.booked?'Booked':'Not booked'}</span>
+      <span class="l-name">${escapeHtml(l.city)}${l.label?` — ${escapeHtml(l.label)}`:''}: ${escapeHtml(l.place)}</span>
+      <span class="l-dates">${escapeHtml(l.dates)}</span>
+    </div>
+  `).join('');
+
+  const withDates = ACTIVITIES.filter(a=>a.bookBy && !NO_DEADLINE_IDS.includes(a.id))
+    .map(a=>({a, date: parseBookByDate(a.bookBy)}))
+    .sort((x,y)=>{
+      if(!x.date && !y.date) return 0;
+      if(!x.date) return 1;
+      if(!y.date) return -1;
+      return x.date - y.date;
+    });
+
+  const now = new Date();
+  document.getElementById('bookingList').innerHTML = withDates.map(({a,date})=>{
+    const cal = gcalUrl(a);
+    let daysBadge = '';
+    if(date){
+      const days = Math.ceil((date - now)/86400000);
+      const label = days < 0 ? 'Deadline passed' : days === 0 ? 'Today' : `${days} days left`;
+      daysBadge = `<span class="b-days ${days>=0 && days<=14 ? 'urgent':''}">${label}</span>`;
+    }
+    return `
+      <div class="booking-row">
+        <span class="b-name">${escapeHtml(a.name)} <span style="color:var(--dim); font-weight:400;">— ${a.city}</span></span>
+        <span class="b-meta">${escapeHtml(a.bookBy)}</span>
+        ${daysBadge}
+        ${cal?`<a class="b-cal" target="_blank" rel="noopener" href="${cal}">Add to calendar</a>`:''}
+      </div>`;
+  }).join('') || '<div class="empty">Nothing with a fixed deadline right now.</div>';
+
+  const noDeadline = ACTIVITIES.filter(a=>NO_DEADLINE_IDS.includes(a.id));
+  document.getElementById('noDeadlineList').innerHTML = noDeadline.map(a=>`
+    <div class="booking-row">
+      <span class="b-name">${escapeHtml(a.name)} <span style="color:var(--dim); font-weight:400;">— ${a.city}</span></span>
+      <span class="b-meta">Book ahead when you're ready — no set deadline, but tickets can sell out closer to the date.</span>
+    </div>
+  `).join('');
+}
+
+/* ---------- Budget render ---------- */
+function renderEstimates(){
+  document.getElementById('estList').innerHTML = ESTIMATES.map(e=>
+    `<li><b>${escapeHtml(e.label)}</b><span class="p">${escapeHtml(formatPrice(e.amount))}</span></li>`
+  ).join('');
+}
+
+function fmt(n){ return '$' + n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- Pack list ---------- */
+function ensurePacking(){
+  if(!sharedState.packing){
+    sharedState.packing = DEFAULT_PACKING.map((text,i)=>({id:'p'+i, text, done:false}));
+  }
+}
+
+function renderPack(){
+  ensurePacking();
+  const list = document.getElementById('packList');
+  list.innerHTML = sharedState.packing.map(item=>`
+    <li class="${item.done?'done':''}">
+      <button class="pack-check ${item.done?'done':''}" data-id="${item.id}">${item.done?'✓':''}</button>
+      <span class="txt">${escapeHtml(item.text)}</span>
+      <button class="pack-remove" data-id="${item.id}">✕</button>
+    </li>
+  `).join('') || '<div class="empty">Nothing on the list yet.</div>';
+
+  list.querySelectorAll('.pack-check').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const item = sharedState.packing.find(p=>p.id===btn.dataset.id);
+      if(item){ item.done = !item.done; saveState(); renderPack(); }
+    });
+  });
+  list.querySelectorAll('.pack-remove').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      sharedState.packing = sharedState.packing.filter(p=>p.id!==btn.dataset.id);
+      saveState();
+      renderPack();
+    });
+  });
+}
+
+document.getElementById('packForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const input = document.getElementById('packInput');
+  const text = input.value.trim();
+  if(!text) return;
+  ensurePacking();
+  sharedState.packing.push({id:'p'+Date.now(), text, done:false});
+  saveState();
+  renderPack();
+  input.value = '';
+  input.focus();
+});
+
+function renderBudget(){
+  const expenses = sharedState.expenses || [];
+  const budgetTotal = sharedState.budgetTotal || 0;
+  const spent = expenses.reduce((s,e)=>s+e.amount,0);
+  const remaining = budgetTotal - spent;
+
+  document.getElementById('budgetTotalDisplay').textContent = fmt(budgetTotal);
+  document.getElementById('statSpent').textContent = fmt(spent);
+  document.getElementById('statRemaining').textContent = fmt(remaining);
+  document.getElementById('statRemaining').style.color = remaining < 0 ? 'var(--red)' : '';
+
+  const pct = budgetTotal > 0 ? Math.min(100, (spent/budgetTotal)*100) : 0;
+  const fill = document.getElementById('budgetBarFill');
+  fill.style.width = pct + '%';
+  fill.classList.toggle('over', spent > budgetTotal);
+
+  const body = document.getElementById('ledgerBody');
+  const emptyMsg = document.getElementById('ledgerEmpty');
+  body.innerHTML = '';
+  if(expenses.length === 0){
+    emptyMsg.style.display = 'block';
+  } else {
+    emptyMsg.style.display = 'none';
+    expenses.slice().reverse().forEach((exp)=>{
+      const realIdx = expenses.indexOf(exp);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(exp.desc)}</td>
+        <td>${escapeHtml(exp.category)}</td>
+        <td style="text-align:right;">${fmt(exp.amount)}</td>
+        <td><button class="del-btn" data-idx="${realIdx}">✕</button></td>
+      `;
+      body.appendChild(tr);
+    });
+    body.querySelectorAll('.del-btn').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        sharedState.expenses.splice(+e.target.dataset.idx,1);
+        saveState();
+        renderBudget();
+      });
+    });
+  }
+}
+
+document.getElementById('editBudgetBtn').addEventListener('click', ()=>{
+  const val = prompt('Set total trip budget ($)', sharedState.budgetTotal || 4000);
+  if(val === null) return;
+  const num = parseFloat(val);
+  if(isNaN(num) || num < 0) return;
+  sharedState.budgetTotal = num;
+  saveState();
+  renderBudget();
+});
+
+/* ---------- Firestore sync ---------- */
+function setSync(){
+  const dot = document.getElementById('syncDot');
+  const text = document.getElementById('syncText');
+  dot.classList.add('off');
+  text.textContent = 'Saved on this device only (not shared yet)';
+}
+
+function saveState(){
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(sharedState));
+}
+
+function initSync(){
+  setSync();
+  const cached = localStorage.getItem(LOCAL_KEY);
+  if(cached){
+    try{ sharedState = Object.assign({expenses:[], doneIds:{}, budgetTotal:4000}, JSON.parse(cached)); }catch(e){}
+  }
+  renderBudget();
+  renderExplore();
+  renderPack();
+  renderBookings();
+}
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+document.getElementById('searchBox').addEventListener('input', e=>{ searchTerm = e.target.value; renderExplore(); });
+
+document.getElementById('expenseForm').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const desc = document.getElementById('expDesc').value.trim();
+  const amount = parseFloat(document.getElementById('expAmount').value);
+  const category = document.getElementById('expCategory').value;
+  if(!desc || isNaN(amount)) return;
+  if(!sharedState.expenses) sharedState.expenses = [];
+  sharedState.expenses.push({ desc, amount, category });
+  saveState();
+  renderBudget();
+  e.target.reset();
+  document.getElementById('expDesc').focus();
+});
+
+/* ---------- Init ---------- */
+renderItinerary();
+renderFilters();
+renderEstimates();
+initSync();
+hydrateUnsplashImages();
+</script>
+</body>
+</html>
