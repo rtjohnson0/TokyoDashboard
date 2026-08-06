@@ -4,8 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>東京 ⟡ 大阪 ⟡ 京都 — Japan 2026</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0A0A0D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Japan Trip">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Firebase (shared live sync, scoped per trip code) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 
 <style>
 :root{
@@ -24,6 +35,7 @@
 html{scroll-behavior:smooth;}
 body{
   margin:0;
+  position:relative;
   background:
     radial-gradient(ellipse 900px 500px at 15% -10%, rgba(255,75,62,0.10), transparent 60%),
     radial-gradient(ellipse 700px 500px at 100% 0%, rgba(244,166,61,0.10), transparent 55%),
@@ -35,14 +47,36 @@ body{
 .display{font-family:'Anton', sans-serif; letter-spacing:0.01em; text-transform:uppercase;}
 .mono{font-family:'IBM Plex Mono', monospace;}
 
+/* ===== Ambient atmosphere (grain + drifting embers) ===== */
+.grain-overlay{
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  opacity:0.035; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.ember-field{position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;}
+.ember-field .ember{
+  position:absolute; bottom:-10px; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,140,90,0.95), rgba(255,90,60,0) 70%);
+  animation:emberFloat linear infinite;
+  will-change:transform, opacity;
+}
+@keyframes emberFloat{
+  0%{ transform:translateY(0) translateX(0); opacity:0; }
+  8%{ opacity:0.85; }
+  92%{ opacity:0.25; }
+  100%{ transform:translateY(-115vh) translateX(var(--drift, 24px)); opacity:0; }
+}
+header, nav.tabs, main, footer{position:relative; z-index:1;}
+@media (prefers-reduced-motion: reduce){ .ember-field{display:none;} }
+
 /* ===== Header ===== */
 header{
   position:relative;
   padding:0;
   overflow:hidden;
 }
-.hero-media{position:relative; height:clamp(280px,46vw,420px); width:100%;}
-.hero-media img{width:100%; height:100%; object-fit:cover; display:block; filter:brightness(0.5) saturate(1.15);}
+.hero-media{position:relative; height:clamp(280px,46vw,420px); width:100%; background:linear-gradient(90deg, var(--bg2) 25%, #241f2c 37%, var(--bg2) 63%); background-size:400% 100%; animation:shimmer 1.6s ease infinite;}
+.hero-media img{width:100%; height:100%; object-fit:cover; display:block; filter:brightness(0.5) saturate(1.15); opacity:0; transition:opacity .4s ease;}
 .hero-media .hero-fade{
   position:absolute; inset:0;
   background:linear-gradient(180deg, rgba(10,10,13,0.25) 0%, rgba(10,10,13,0.35) 45%, var(--bg) 100%);
@@ -83,15 +117,35 @@ nav.tabs{
   flex:1; background:transparent; border:1px solid var(--line); color:var(--dim);
   font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase;
   padding:11px 8px; border-radius:6px; cursor:pointer; transition:all .15s;
+  display:flex; align-items:center; justify-content:center; gap:6px;
 }
+.tab-btn .tab-icon{font-size:14px; line-height:1;}
 .tab-btn.active{background:var(--red); border-color:var(--red); color:#100404; font-weight:600;}
 .tab-btn:hover:not(.active){border-color:var(--amber); color:var(--amber);}
 .currency-toggle{
-  background:var(--bg2); border:1px solid var(--line); color:var(--amber);
-  font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700;
-  padding:0 13px; border-radius:6px; cursor:pointer; flex-shrink:0;
+  position:absolute; top:14px; right:16px; z-index:5;
+  background:rgba(10,10,13,0.55); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,0.2); color:var(--amber);
+  font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:700;
+  width:34px; height:34px; border-radius:50%; cursor:pointer; flex-shrink:0;
 }
 .currency-toggle:hover{border-color:var(--amber);}
+
+/* Bottom, native-app-style tab bar on mobile */
+@media (max-width:680px){
+  nav.tabs{
+    position:fixed; top:auto; bottom:0; left:0; right:0;
+    border-bottom:none; border-top:1px solid var(--line);
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+  }
+  .tabs-inner{gap:2px;}
+  .tab-btn{
+    flex-direction:column; gap:2px; padding:6px 2px; font-size:9px; border:none; background:transparent;
+    border-radius:10px;
+  }
+  .tab-btn .tab-icon{font-size:18px;}
+  .tab-btn.active{background:rgba(255,75,62,0.15); color:var(--red);}
+  main{padding-bottom:86px;}
+}
 
 /* ===== Trip status / countdown ===== */
 .trip-status{
@@ -105,6 +159,14 @@ nav.tabs{
 .trip-status .ts-big{font-family:'Anton',sans-serif; font-size:24px; color:var(--amber);}
 
 /* ===== Packing list ===== */
+.pack-progress{
+  border:1px solid var(--line); border-radius:10px; padding:12px 16px; margin-bottom:16px; background:var(--bg2);
+}
+.pack-progress .pp-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+.pack-progress .pp-label{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--dim);}
+.pack-progress .pp-count{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--jade); font-weight:600;}
+.pack-progress .pp-track{height:8px; border-radius:20px; background:var(--bg3); overflow:hidden;}
+.pack-progress .pp-fill{height:100%; border-radius:20px; background:linear-gradient(90deg, var(--jade), var(--amber)); transition:width .3s ease;}
 .pack-add-form{display:flex; gap:8px; margin-bottom:18px;}
 .pack-add-form input{
   flex:1; background:var(--bg2); border:1px solid var(--line); color:var(--paper);
@@ -131,8 +193,8 @@ nav.tabs{
 
 main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
 .panel{display:none;}
-.panel.active{display:block; animation:fadeIn .25s ease;}
-@keyframes fadeIn{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+.panel.active{display:block; animation:fadeIn .32s cubic-bezier(.22,1,.36,1);}
+@keyframes fadeIn{from{opacity:0; transform:translateY(10px) scale(0.99);} to{opacity:1; transform:none;}}
 
 /* ===== Section headers ===== */
 .sec-title{
@@ -185,10 +247,10 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
 /* ===== City banner (itinerary section break) ===== */
 .city-banner{
   position:relative; height:180px; border-radius:12px; overflow:hidden;
-  margin:30px 0 16px; background:var(--bg2);
+  margin:30px 0 16px; background:linear-gradient(90deg, var(--bg2) 25%, #241f2c 37%, var(--bg2) 63%); background-size:400% 100%; animation:shimmer 1.6s ease infinite;
 }
 .city-banner:first-child{margin-top:0;}
-.city-banner img{width:100%; height:100%; object-fit:cover; display:block; filter:brightness(0.55) saturate(1.1);}
+.city-banner img{width:100%; height:100%; object-fit:cover; display:block; filter:brightness(0.55) saturate(1.1); opacity:0; transition:opacity .4s ease;}
 .city-banner .banner-fade{
   position:absolute; inset:0;
   background:linear-gradient(180deg, rgba(10,10,13,0.1) 0%, rgba(10,10,13,0.55) 60%, var(--bg) 100%);
@@ -221,6 +283,29 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
 
 /* ===== Item icon row (redesigned plan list) ===== */
 .plan-list li .ic{font-size:13px; width:18px; text-align:center; flex-shrink:0;}
+
+/* ===== Map tab ===== */
+.map-embed-wrap{
+  border:1px solid var(--line); border-radius:12px; overflow:hidden;
+  height:70vh; min-height:420px; background:var(--bg2);
+}
+.map-embed-wrap iframe{width:100%; height:100%; border:0; display:block;}
+
+/* ===== Guide tab ===== */
+.phrase-card{
+  border:1px solid var(--line); border-radius:10px; padding:12px 16px; margin-bottom:8px; background:var(--bg2);
+}
+.phrase-card .p-jp{font-size:17px; font-weight:700; margin-bottom:2px;}
+.phrase-card .p-romaji{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--amber); margin-bottom:4px;}
+.phrase-card .p-en{font-size:13px; color:var(--paper);}
+.phrase-card .p-note{font-size:11.5px; color:var(--dim); margin-top:4px; font-style:italic;}
+.tip-row{
+  display:flex; gap:12px; align-items:flex-start; border:1px solid var(--line); border-radius:10px;
+  padding:12px 16px; margin-bottom:8px; background:var(--bg2);
+}
+.tip-row .t-icon{font-size:18px; flex-shrink:0; margin-top:1px;}
+.tip-row .t-title{font-weight:700; font-size:14px; margin-bottom:3px;}
+.tip-row .t-desc{font-size:13px; color:var(--dim); line-height:1.45;}
 
 /* ===== Book tab ===== */
 .lodging-row, .booking-row{
@@ -265,7 +350,7 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
   overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.5);
 }
 .surprise-card .media{height:190px; position:relative;}
-.surprise-card .media img{width:100%; height:100%; object-fit:cover;}
+.surprise-card .media img{width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity .4s ease;}
 .surprise-card .media .media-fade{position:absolute; inset:0; background:linear-gradient(180deg, transparent 40%, rgba(10,10,13,0.9) 100%);}
 .surprise-card .media .s-name{position:absolute; left:16px; right:16px; bottom:12px; margin:0; color:#fff; font-weight:700; font-size:18px; text-shadow:0 2px 8px rgba(0,0,0,0.7);}
 .surprise-card .s-body{padding:16px 18px 18px;}
@@ -299,9 +384,10 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
   transition:box-shadow .2s, border-color .2s, transform .2s;
 }
 .card:hover{border-color:var(--amber); box-shadow:0 0 30px rgba(244,166,61,0.2); transform:translateY(-2px);}
-.card .media{position:relative; height:150px; background:var(--bg3);}
-.card .media img{width:100%; height:100%; object-fit:cover; display:block;}
+.card .media{position:relative; height:150px; background:linear-gradient(90deg, var(--bg3) 25%, #241f2c 37%, var(--bg3) 63%); background-size:400% 100%; animation:shimmer 1.6s ease infinite;}
+.card .media img{width:100%; height:100%; object-fit:cover; display:block; font-size:0; color:transparent; opacity:0; transition:opacity .4s ease;}
 .card .media .media-fade{position:absolute; inset:0; background:linear-gradient(180deg, transparent 40%, rgba(10,10,13,0.85) 100%);}
+@keyframes shimmer{0%{background-position:100% 0;} 100%{background-position:0 0;}}
 .card .media .card-top{position:absolute; left:10px; top:10px; right:10px; margin:0;}
 .card .media .card-name{position:absolute; left:12px; right:12px; bottom:8px; margin:0; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,0.7);}
 .card-body{padding:10px 14px 14px;}
@@ -373,17 +459,39 @@ form.expense-form button{
   font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700; cursor:pointer;
   text-transform:uppercase; height:39px;
 }
-table.ledger{width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:13px;}
-table.ledger th{text-align:left; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--dim); border-bottom:1px solid var(--line); padding:8px;}
-table.ledger td{padding:9px 8px; border-bottom:1px solid var(--line);}
-.del-btn{background:none; border:none; color:var(--dim); cursor:pointer; font-size:14px;}
+/* ===== Ledger rows (card-style, matches Book/Pack visual language) ===== */
+.ledger-row{
+  display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--line);
+  border-radius:8px; margin-bottom:8px; background:var(--bg2);
+}
+.ledger-row .cat-dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+.ledger-row .l-desc{font-weight:600; font-size:14px; flex:1; min-width:0;}
+.ledger-row .l-cat{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--dim); text-transform:uppercase; letter-spacing:0.04em; flex-shrink:0;}
+.ledger-row .l-amt{font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600; flex-shrink:0; min-width:70px; text-align:right;}
+.del-btn{background:none; border:none; color:var(--dim); cursor:pointer; font-size:14px; flex-shrink:0;}
 .del-btn:hover{color:var(--red);}
+
+/* ===== Category breakdown ===== */
+.cat-breakdown{border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:18px; background:var(--bg2);}
+.cat-breakdown .sec-title{font-size:14px; margin-bottom:12px;}
+.cat-bar-row{display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:12.5px;}
+.cat-bar-row:last-child{margin-bottom:0;}
+.cat-bar-row .cat-name{width:76px; flex-shrink:0; color:var(--paper); font-family:'IBM Plex Mono',monospace; font-size:11px;}
+.cat-bar-track{flex:1; height:8px; border-radius:20px; background:var(--bg3); overflow:hidden;}
+.cat-bar-fill{height:100%; border-radius:20px;}
+.cat-bar-amt{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--dim); width:64px; text-align:right; flex-shrink:0;}
 .empty{color:var(--dim); font-size:13px; padding:20px 0; text-align:center;}
 .sync-pill{
-  display:inline-flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace;
-  font-size:10.5px; color:var(--dim); margin-bottom:16px;
+  display:flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace;
+  font-size:10.5px; color:var(--dim); margin-bottom:16px; flex-wrap:wrap;
 }
 .sync-dot{width:7px; height:7px; border-radius:50%; background:var(--jade);}
+.trip-code-btn{
+  margin-left:auto; background:var(--bg2); border:1px solid var(--line); color:var(--amber);
+  font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.05em; text-transform:uppercase;
+  padding:4px 10px; border-radius:20px; cursor:pointer;
+}
+.trip-code-btn:hover{border-color:var(--amber);}
 .sync-dot.off{background:var(--red);}
 
 footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:center;}
@@ -392,6 +500,14 @@ footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); fo
   form.expense-form{grid-template-columns:1fr 1fr;}
   form.expense-form button{grid-column:1/-1;}
 }
+/* ===== Tactile press feedback ===== */
+button, .map-link, .jump-pill, a.b-cal{
+  transition:transform .12s ease, background .15s, border-color .15s, color .15s, box-shadow .15s;
+}
+button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
+  transform:scale(0.94);
+}
+
 @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
 
 /* ===== Scroll reveal ===== */
@@ -402,7 +518,7 @@ footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); fo
 .plan-list li{align-items:center;}
 .plan-list .thumb{
   width:36px; height:36px; border-radius:7px; object-fit:cover; flex-shrink:0;
-  background:var(--bg3); border:1px solid var(--line);
+  background:var(--bg3); border:1px solid var(--line); opacity:0; transition:opacity .4s ease;
 }
 .plan-list .ic{width:36px; height:36px; border-radius:7px; background:var(--bg3); border:1px solid var(--line);
   display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0;}
@@ -422,11 +538,33 @@ footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); fo
 </style>
 </head>
 <body>
+<div class="ember-field" aria-hidden="true">
+  <span class="ember" style="left:63.4%; width:2.1px; height:2.1px; animation-duration:11.5s; animation-delay:3.6s; --drift:-27px;"></span>
+  <span class="ember" style="left:67.0%; width:4.7px; height:4.7px; animation-duration:9.8s; animation-delay:6.8s; --drift:-37px;"></span>
+  <span class="ember" style="left:11.0%; width:2.7px; height:2.7px; animation-duration:14.4s; animation-delay:9.0s; --drift:29px;"></span>
+  <span class="ember" style="left:42.3%; width:3.3px; height:3.3px; animation-duration:11.5s; animation-delay:13.9s; --drift:-20px;"></span>
+  <span class="ember" style="left:69.0%; width:3.0px; height:3.0px; animation-duration:10.4s; animation-delay:15.3s; --drift:3px;"></span>
+  <span class="ember" style="left:11.8%; width:3.1px; height:3.1px; animation-duration:12.2s; animation-delay:5.5s; --drift:-7px;"></span>
+  <span class="ember" style="left:79.5%; width:4.2px; height:4.2px; animation-duration:13.8s; animation-delay:15.6s; --drift:8px;"></span>
+  <span class="ember" style="left:9.6%; width:2.9px; height:2.9px; animation-duration:14.7s; animation-delay:14.2s; --drift:6px;"></span>
+  <span class="ember" style="left:57.4%; width:4.1px; height:4.1px; animation-duration:9.4s; animation-delay:3.6s; --drift:-3px;"></span>
+  <span class="ember" style="left:96.6%; width:4.6px; height:4.6px; animation-duration:16.8s; animation-delay:6.1s; --drift:18px;"></span>
+  <span class="ember" style="left:63.0%; width:3.1px; height:3.1px; animation-duration:12.3s; animation-delay:3.4s; --drift:-6px;"></span>
+  <span class="ember" style="left:69.4%; width:4.1px; height:4.1px; animation-duration:9.6s; animation-delay:10.2s; --drift:28px;"></span>
+  <span class="ember" style="left:72.0%; width:2.5px; height:2.5px; animation-duration:12.4s; animation-delay:15.8s; --drift:31px;"></span>
+  <span class="ember" style="left:23.1%; width:3.0px; height:3.0px; animation-duration:15.9s; animation-delay:0.9s; --drift:-36px;"></span>
+  <span class="ember" style="left:79.3%; width:3.2px; height:3.2px; animation-duration:9.6s; animation-delay:14.6s; --drift:32px;"></span>
+  <span class="ember" style="left:86.1%; width:2.9px; height:2.9px; animation-duration:14.9s; animation-delay:6.3s; --drift:18px;"></span>
+  <span class="ember" style="left:15.7%; width:2.4px; height:2.4px; animation-duration:15.7s; animation-delay:8.6s; --drift:34px;"></span>
+  <span class="ember" style="left:43.1%; width:3.8px; height:3.8px; animation-duration:12.3s; animation-delay:16.0s; --drift:-23px;"></span>
+</div>
+<div class="grain-overlay" aria-hidden="true"></div>
 
 <header>
   <div class="hero-media">
-    <img id="heroImg" loading="eager" src="https://loremflickr.com/1200/500/tokyo,shibuya,night,neon" data-photo-query="Tokyo Shibuya crossing night neon" alt="Tokyo at night">
+    <img id="heroImg" loading="eager" src="https://loremflickr.com/1200/500/tokyo,shibuya,night,neon" data-photo-query="Tokyo Shibuya crossing night neon" data-cat="activity" onerror="handleImgError(this)" onload="this.style.opacity=1" alt="Tokyo at night">
     <div class="hero-fade"></div>
+    <button class="currency-toggle" id="currencyToggle">$</button>
   </div>
   <div class="hero-content">
     <div class="kicker">The Lads Takeover <b>Japan</b> · Shared Trip App</div>
@@ -440,12 +578,13 @@ footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); fo
 
 <nav class="tabs">
   <div class="tabs-inner">
-    <button class="tab-btn active" data-tab="itinerary">Itinerary</button>
-    <button class="tab-btn" data-tab="explore">Explore</button>
-    <button class="tab-btn" data-tab="book">Book</button>
-    <button class="tab-btn" data-tab="pack">Pack</button>
-    <button class="tab-btn" data-tab="budget">Budget</button>
-    <button class="currency-toggle" id="currencyToggle">$</button>
+    <button class="tab-btn active" data-tab="itinerary"><span class="tab-icon">🗓</span><span class="tab-label">Itinerary</span></button>
+    <button class="tab-btn" data-tab="explore"><span class="tab-icon">🧭</span><span class="tab-label">Explore</span></button>
+    <button class="tab-btn" data-tab="map"><span class="tab-icon">🗺</span><span class="tab-label">Map</span></button>
+    <button class="tab-btn" data-tab="book"><span class="tab-icon">📌</span><span class="tab-label">Book</span></button>
+    <button class="tab-btn" data-tab="pack"><span class="tab-icon">🎒</span><span class="tab-label">Pack</span></button>
+    <button class="tab-btn" data-tab="budget"><span class="tab-icon">💴</span><span class="tab-label">Budget</span></button>
+    <button class="tab-btn" data-tab="guide"><span class="tab-icon">📖</span><span class="tab-label">Guide</span></button>
   </div>
 </nav>
 
@@ -469,6 +608,15 @@ footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); fo
     <div id="exploreSections"></div>
   </section>
 
+  <!-- MAP -->
+  <section class="panel" id="panel-map">
+    <div class="sec-title">Trip map</div>
+    <div class="sec-sub">Every saved pin from your planning map, all in one place.</div>
+    <div class="map-embed-wrap">
+      <iframe src="https://www.google.com/maps/d/u/0/embed?mid=1ieFXOuAjehZxUsqoFc25DZ8yV9LHkeU&ehbc=2E312F" loading="lazy" allowfullscreen title="Japan trip map"></iframe>
+    </div>
+  </section>
+
   <!-- BOOK -->
   <section class="panel" id="panel-book">
     <div class="sec-title">Reservations & deadlines</div>
@@ -484,6 +632,7 @@ footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); fo
   <section class="panel" id="panel-pack">
     <div class="sec-title">Packing list</div>
     <div class="sec-sub">Synced between you both — check it off as it's packed.</div>
+    <div class="pack-progress" id="packProgress"></div>
     <form id="packForm" class="pack-add-form">
       <input type="text" id="packInput" placeholder="Add an item...">
       <button type="submit">Add</button>
@@ -493,20 +642,25 @@ footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); fo
 
   <!-- BUDGET -->
   <section class="panel" id="panel-budget">
-    <div class="sync-pill"><span class="sync-dot" id="syncDot"></span><span id="syncText">Connecting...</span></div>
+    <div class="sync-pill">
+      <span class="sync-dot" id="syncDot"></span><span id="syncText">Connecting...</span>
+      <button class="trip-code-btn" id="tripCodeBtn"></button>
+    </div>
 
     <div class="budget-hero">
       <div class="budget-hero-top">
-        <span class="stat-label">Trip budget</span>
+        <span class="stat-label" id="budgetTotalLabel">Remaining of $4,000.00 budget</span>
         <button class="edit-budget-btn" id="editBudgetBtn">Edit</button>
       </div>
-      <div class="budget-hero-amount mono" id="budgetTotalDisplay">$4,000.00</div>
+      <div class="budget-hero-amount mono" id="statRemaining">$4,000.00</div>
       <div class="budget-bar-track"><div class="budget-bar-fill" id="budgetBarFill"></div></div>
       <div class="budget-hero-sub">
         <span><span class="dim">Spent</span> <b class="mono" id="statSpent">$0.00</b></span>
-        <span><span class="dim">Remaining</span> <b class="mono amber" id="statRemaining">$4,000.00</b></span>
+        <span><span class="dim">Budget</span> <b class="mono" id="budgetTotalDisplay">$4,000.00</b></span>
       </div>
     </div>
+
+    <div id="categoryBreakdown"></div>
 
     <div class="est-box">
       <div class="sec-title">Planned / booking costs (reference)</div>
@@ -522,11 +676,21 @@ footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); fo
       <button type="submit">Add</button>
     </form>
 
-    <table class="ledger">
-      <thead><tr><th>Item</th><th>Category</th><th style="text-align:right;">Amount</th><th></th></tr></thead>
-      <tbody id="ledgerBody"></tbody>
-    </table>
+    <div class="sec-title" style="font-size:15px; margin-bottom:10px;">Ledger</div>
+    <div id="ledgerBody"></div>
     <div class="empty" id="ledgerEmpty">No expenses logged yet.</div>
+  </section>
+
+  <!-- GUIDE -->
+  <section class="panel" id="panel-guide">
+    <div class="sec-title">Phrasebook & train tips</div>
+    <div class="sec-sub">Quick reference for getting around and getting by.</div>
+
+    <div class="sec-title" style="font-size:15px; margin-top:4px;">Useful phrases</div>
+    <div class="phrase-list" id="phraseList"></div>
+
+    <div class="sec-title" style="font-size:15px; margin-top:26px;">Riding the trains</div>
+    <div class="tip-list" id="trainTips"></div>
   </section>
 </main>
 
@@ -534,11 +698,55 @@ footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); fo
 
 <script>
 /* =========================================================
-   PERSISTENCE — local to this device/browser for now.
-   Shared live sync (Firebase) can be wired in later once the
-   front end is locked — see saveState()/initSync() below.
+   PERSISTENCE — synced live via Firebase, scoped to a "trip code"
+   so different groups sharing this same site never see each
+   other's data. Falls back to local-only if no config is set.
    ========================================================= */
 const LOCAL_KEY = 'japan-trip-2026';
+
+/* =========================================================
+   FIREBASE CONFIG — paste your project's config below.
+   See README for setup steps (~10 min, free tier).
+   Leave apiKey as "PASTE_ME" to stay in local-only mode.
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyBp1oihZUi-AVasciEklN8lXxKlPB9EMXQ",
+  authDomain: "japan2026-8bedb.firebaseapp.com",
+  projectId: "japan2026-8bedb",
+  storageBucket: "japan2026-8bedb.firebasestorage.app",
+  messagingSenderId: "391368134084",
+  appId: "1:391368134084:web:2e7327e10134fb42fce891",
+  measurementId: "G-0SEB2MZB6L"
+};
+
+let db = null;
+let firebaseReady = false;
+try{
+  if(firebaseConfig.apiKey !== "PASTE_ME"){
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+    firebaseReady = true;
+  }
+}catch(e){ console.error('Firebase init failed', e); }
+
+const TRIP_CODE_KEY = 'trip-code';
+function getTripCode(){ return localStorage.getItem(TRIP_CODE_KEY) || ''; }
+function setTripCode(code){ localStorage.setItem(TRIP_CODE_KEY, code); }
+function tripDoc(){ return db.collection('trips').doc(getTripCode()); }
+
+function promptForTripCode(isChange){
+  const current = getTripCode();
+  const msg = isChange
+    ? 'Enter a trip code to sync with — use the same code as your travel partner:'
+    : "Enter a trip code to sync your budget/pack list with your travel partner.\n\nMake one up (e.g. a word only you two would use) and share it with them — anyone using the same code sees the same shared data.";
+  const val = prompt(msg, current);
+  if(val === null) return null;
+  const clean = val.trim().toLowerCase().replace(/\s+/g, '-');
+  if(!clean) return null;
+  setTripCode(clean);
+  return clean;
+}
 
 /* =========================================================
    CURRENCY TOGGLE — flips $ prices to an approximate ¥ figure
@@ -561,6 +769,7 @@ document.getElementById('currencyToggle').addEventListener('click', ()=>{
   renderItinerary();
   renderExplore();
   renderEstimates();
+  renderBudget();
 });
 document.getElementById('currencyToggle').textContent = currency === 'USD' ? '$' : '¥';
 
@@ -571,8 +780,8 @@ document.getElementById('currencyToggle').textContent = currency === 'USD' ? '$'
    keyword-matched fallback photo was already showing.
    Leave either key as "PASTE_ME" to skip that source.
    ========================================================= */
-const GOOGLE_CSE_KEY = "PASTE_ME";   // Google Cloud Console → Custom Search API key
-const GOOGLE_CSE_CX = "PASTE_ME";    // Programmable Search Engine ID (cx)
+const GOOGLE_CSE_KEY = "AIzaSyDSr_J_Q51a9dRMuWikg_Wh5N58z9MWy50";   // Google Cloud Console → Custom Search API key
+const GOOGLE_CSE_CX = "61b7e3b11f52f4f80";    // Programmable Search Engine ID (cx)
 const UNSPLASH_ACCESS_KEY = "ZCswCW10nvCMj0MkoMyplE60FaDHzeCgyR1Dqhk6vrU";
 const imageCache = JSON.parse(localStorage.getItem('image-cache') || '{}');
 
@@ -605,12 +814,20 @@ async function unsplashLookup(query){
   }catch(e){ console.error('Unsplash lookup failed', e); return null; }
 }
 
+const FAIL_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour before retrying a failed lookup
+
 async function imageLookup(query){
-  if(imageCache[query]) return imageCache[query];
+  const cached = imageCache[query];
+  if(cached){
+    if(typeof cached === 'string') return cached;
+    if(cached.fail && (Date.now() - cached.ts) < FAIL_COOLDOWN_MS) return null; // still cooling down, skip network call
+  }
   const google = await googleImageLookup(query);
   if(google) return cacheAndReturn(query, google);
   const unsplash = await unsplashLookup(query);
   if(unsplash) return cacheAndReturn(query, unsplash);
+  imageCache[query] = {fail:true, ts:Date.now()};
+  localStorage.setItem('image-cache', JSON.stringify(imageCache));
   return null;
 }
 
@@ -619,7 +836,7 @@ async function imageLookup(query){
 async function hydrateUnsplashImages(){
   if(GOOGLE_CSE_KEY === "PASTE_ME" && UNSPLASH_ACCESS_KEY === "PASTE_ME") return;
   const imgs = Array.from(document.querySelectorAll('img[data-photo-query]'));
-  const CONCURRENCY = 4;
+  const CONCURRENCY = 2;
   let i = 0;
   async function worker(){
     while(i < imgs.length){
@@ -745,14 +962,143 @@ const ACTIVITIES = [
 const CAT_LABEL = {food:'Food', bar:'Bar / Night', activity:'Activity', shop:'Shopping', photo:'Photo Spot'};
 const CAT_COLOR = {food:'#F4A63D', bar:'#FF3D8A', activity:'#3FBF8F', shop:'#9E8CF5', photo:'#FF4B3E'};
 
+// For niche spots (small local bars/shops) with no marquee override — a real
+// stock photo of that specific unmarked storefront basically doesn't exist,
+// so a generic, category-matched, on-theme photo beats a wrong or blank one.
+// Loremflickr wants comma-separated SINGLE-WORD tags (AND match) — a
+// multi-word phrase in one tag slot returns nothing. Keep these short.
+const CAT_GENERIC_QUERY = {
+  food:'ramen,japan',
+  bar:'izakaya,bar',
+  activity:'temple,japan',
+  shop:'market,japan',
+  photo:'alley,japan',
+};
+// Richer natural-language phrase for Google/Unsplash, which do real
+// full-text search and handle spaces fine.
+const CAT_GENERIC_PHRASE = {
+  food:'japanese street food',
+  bar:'cozy izakaya bar interior',
+  activity:'japan travel scenic',
+  shop:'japanese boutique shop',
+  photo:'japan street alley',
+};
+// loremflickr wants short comma-separated single-word tags (AND match).
+function toLoremTags(phrase, maxTags){
+  return phrase.replace(/[（）()「」【】]/g,'').split(/\s+/).filter(Boolean).slice(0, maxTags||3).join(',');
+}
+function loremQueryFor(item){
+  if(PHOTO_OVERRIDES[item.id]) return toLoremTags(PHOTO_OVERRIDES[item.id], 3);
+  return CAT_GENERIC_QUERY[item.category] || 'japan';
+}
+// Natural-language phrase for Google/Unsplash (spaces are fine there).
+function photoQueryFor(item){
+  if(PHOTO_OVERRIDES[item.id]) return PHOTO_OVERRIDES[item.id] + ' japan';
+  return `${CAT_GENERIC_PHRASE[item.category] || 'japan travel'} ${item.city}`;
+}
+
 const CITY_BANNERS = {
-  Tokyo:{ photo:'tokyo,shibuya crossing,night,neon', dates:'Nov 28 – Dec 1 · Dec 7 – 8' },
-  Osaka:{ photo:'osaka,dotonbori,glico sign,night', dates:'Dec 1 – 4' },
-  Kyoto:{ photo:'kyoto,fushimi inari,torii gates', dates:'Dec 4 – 7' },
+  Tokyo:{ photo:'tokyo,shibuya,night,neon', dates:'Nov 28 – Dec 1 · Dec 7 – 8' },
+  Osaka:{ photo:'osaka,dotonbori,night', dates:'Dec 1 – 4' },
+  Kyoto:{ photo:'kyoto,torii,temple', dates:'Dec 4 – 7' },
 };
 
 // More specific search terms for marquee spots so the photo actually
 // matches the place, instead of a generic city/name guess.
+const MANUAL_IMAGE_URLS = {
+  'ichiran-shibuya': 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2f/c4/c5/8e/caption.jpg?w=1100&h=1100&s=1',
+  'soul-food-house': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQQJQM_A3mw1d3X54LMSKtxQpXE-rhMPwE9WI3kPA5VYw&s=10',
+  'pizza-strada': 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2f/79/cf/ee/caption.jpg?w=1100&h=1100&s=1',
+  'grill-bon': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS-9-vdnuVGbIgTFZraIrG7CY8fpNRMu3Wrpt08UVS-Pg&s=10',
+  'age3-ginza': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTTU20ZgzWboQDvNopdFVDrzPdhtnnwDixKWjQ2YqZ_I-gxZUPQq0VirQXp&s=10',
+  'cup-noodles': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSKYK7WKfxpxbx4VaD1WAPCRC6KaG7rsyE70b7BKYrWFmrVw8fRbvIhRBO&s=10',
+  'bar-centifolia': 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/33/86/aa/54/caption.jpg?w=1100&h=1100&s=1',
+  'karaoke-kyobashi': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwZvPl7IuhO45BSXDCGEUn59fldq1swcdp-fYoRplFsjWRbBTP_enwsedL&s=10',
+  'music-bar-bounce': 'https://en.z-mile.com/wp-content/uploads/2024/06/bounce_03b-1024x683.jpg',
+  'a10-jazz': 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/29/68/cf/48/bar1.jpg?w=1200&h=1200&s=1',
+  'ginza-music-bar': 'https://media.timeout.com/images/105234753/750/422/image.jpg',
+  'record-bar-analog': 'https://en.z-mile.com/wp-content/uploads/2024/06/analog_02a-1024x683.jpg',
+  'pass-bar': 'https://media.timeout.com/images/106383099/750/422/image.jpg',
+  'ebisu-bar': 'https://i.guim.co.uk/img/media/07cd9a2c262d2e4624eb4910bc5c29c1f23f48bd/0_297_6000_3600/master/6000.jpg?width=465&dpr=1&s=none&crop=none',
+  'musium-bar': 'https://rimage.savorjapan.com/svj/image/0004038321/photo/0004038321Pzz9elE93oYEfPToJ_1024x576d80.jpg?t=1748987771',
+  'snack-three': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTTxsmWEF0AmBXDIXXpAW_Ou6jTgUZxitCKpEIUQa-y8A&s',
+  'golden-gai': 'https://a3.cdn.japantravel.com/photo/poi-264-219880/1440x960%21/tokyo-shinjuku-golden-gai-219880.webp',
+  'jdm-meet': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcScXbytU3Oci5QcNIcC74cizCO0der-SRhwrAnRVdRR-bUe8FWvHKI2bZ59&s=10',
+  'teamlab-planets': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS3A2PFuuLspKN6h1ewbGx7grIEK9T4i1kTXN3_xm3IZj3IePZgYLoOJh8&s=10',
+  'shibuya-sky': 'https://static.gltjp.com/glt/data/article/21000/20381/20230823_125802_3b72d60b_w1920.webp',
+  'asakusa-sumo': 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2b/6a/8f/4e/caption.jpg?w=1200&h=-1&s=1',
+  'dawn-robot-cafe': 'https://media-cdn.tripadvisor.com/media/photo-m/1280/29/68/38/33/make-a-reservation-to.jpg',
+  'tokyo-disney': 'https://res-3.cloudinary.com/jnto/image/upload/w_2064,h_1300,c_fill,f_auto,fl_lossy,q_auto/v1645708829/chiba/H_00336_001',
+  'tsukiji': 'https://travel.usnews.com/images/Tsukiji_Market_2_Getty_Images_MPGS7qM.jpg',
+  'ghibli-museum': 'https://images.squarespace-cdn.com/content/v1/57b72100e4fcb5e4aef2f4c4/2e997048-c043-4512-9b51-fc01b557931a/IMG_2811.jpeg',
+  'mannen-yu': 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1a/94/0c/af/photo0jpg.jpg?w=1200&h=-1&s=1',
+  'hasunuma-onsen': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRzq-hMu0SxccqIqmGzEl3TiMNkjlYYPnESUnj_HwYMDWueVZrSVdTNjRw&s=10',
+  'todoroki-ravine': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT6jd4Nyld3GKdyh_ZeaMLtd2L_xB4_cK4T-Va1uIJxGnu-Zvnjm45YNDQ&s=10',
+  'tokyo-tower': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSMh_vxMwPuqGLeFHSZFVLsT0rZjMMoKqg8nPy48OoAehORSwgNlkPrpwSf&s=10',
+  'tmg-building': 'https://cdn.cheapoguides.com/wp-content/uploads/sites/2/2014/06/tokyo-govenment-building.jpeg',
+  'tokyo-solamachi': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTRomjdTh1mGQeDiGIrQ7t3IWtSWE0M_APwZRNduiHMV4ZWtrDTRgVI-E5n&s=10',
+  'toyosu-market': 'https://res-2.cloudinary.com/jnto/image/upload/w_2064,h_1300,c_fill,f_auto,fl_lossy,q_auto/v1580799690/tokyo/2034_1',
+  'sensoji': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSEGYnL0g19Cu9N7KRJ91ruMARpztfBDZFkfJSSheMj_O40CiXFoKm--WM&s=10',
+  'yokohama-chinatown': 'https://www.planmyjapan.com/wp-content/uploads/2024/06/yokohama-chinatown-1067x800.jpg',
+  'ikebukuro': 'https://cdn.gaijinpot.com/app/uploads/sites/6/2017/05/Ikebukuro-Anime-Walking-Tour.jpg',
+  'yuri-cafe': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-mMhbK1coOBN1b_3LZ9CXwsvEm9mD8iLIqgoa0kJ1s3sF7RcsELdfBhQ&s=10',
+  'street-kart': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT74fFLtDMiroFsYICVOF6-gED2nUKJiys_99YrEnPRm6e09cuPVJsdq5s&s=10',
+  'akihabara': 'https://cdn.cheapoguides.com/wp-content/uploads/sites/2/2020/05/akihabara-iStock-484915982-562x421.jpg',
+  'akihabara-radio': 'https://upload.wikimedia.org/wikipedia/commons/8/86/Akihabara_Radio_Kaikan%2C_2010-03-06.jpg',
+  'stick-out': 'https://cdn.cheapoguides.com/wp-content/uploads/sites/2/2016/10/stickout-shimokitazawa-nov22_gdl.jpg',
+  'shimokitazawa': 'https://travel.rakuten.com/contents/sites/contents/files/styles/max_1300x1300/public/2024-11/shimokitazawa_7.jpg?itok=yLlAyiv9',
+  'unu-glanta': 'https://cdn.corner.inc/ugc/0dddfb36-6ff3-40e8-9de0-4258512165e1-1754563228727-0.jpeg/resolution=720',
+  'kappabashi': 'https://www.chushikokuandtokyo.org/cdn/front_assets/images_other/spot/middle/zt_spot_15_4.jpg',
+  'takanojin': 'https://shoyuaround.com/wp-content/uploads/2022/12/takanojin-2-1200x675-1-1024x576.jpg',
+  'harajuku-happyone': 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/17/95/58/d2/japanese-cheap-souviner.jpg?w=1200&h=1200&s=1',
+  'sando-lab': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQz8CqCxSJeA5VqRahOqZlVpaNX2DAacoVyPrRUXsPFr7OEYmhrHTcCqc3n&s=10',
+  'atelier-bigi': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlX0y02a1SyGCXZWLdWUlARbOcJWSHqYLy-cfelsv3nU9JBY0QaVZGXXwF&s=10',
+  'sports-depo': 'https://cdn.taxfreeshops.jp/production/shop/900001263-1-2-1730359924.jpg',
+  'nakano-broadway': 'https://media.cntraveler.com/photos/64e7984172f3f6f8f0a3574d/16:9/w_2560,c_limit/Things%20to%20do%20in%20Tokyo_Nakano%20Broadway-JGGWEJ.jpg',
+  'amerikamura': 'https://www.happyjappy.com/wp-content/uploads/osaka-Amerika-Mura-jpg.webp',
+  'dotonbori': 'https://i0.wp.com/www.touristjapan.com/wp-content/uploads/2024/07/Dotonbori-1-scaled.jpg?fit=2560%2C1707&ssl=1',
+  'round1-osaka': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSqpLOvIN1cChwlcE8_lWzmce7OTf-86IOtPA5IwoNMxT7LhoZCSmlYtDs&s=10',
+  'dekasan-sando': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSSeI17NefSlgKJfGxE4s0dyhHpFoDKQpFvZAPW71ykxa1hY-KTYxopypU&s=10',
+  'osaka-castle': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQUjyLZzxAZFRPlSPTelj_83ulUkpUVkPMawijXx3BHQVd_s4LWEqGLeQ&s=10',
+  'okonomiyaki-yukari': 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0a/04/51/cd/okonomiyaki-yukari.jpg?w=1200&h=1200&s=1',
+  'osaka-aquarium': 'https://media-cdn.tripadvisor.com/media/attractions-splice-spp-674x446/06/eb/37/5e.jpg',
+  'teamlab-botanical': 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/32/6a/bf/6f/teamlab-resonating-microcosms.jpg?w=900&h=500&s=1',
+  'universal-studios': 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/22/33/49/48/super-nintendo-world.jpg?w=1200&h=-1&s=1',
+  'ghibli-park': 'https://cdn.cheapoguides.com/wp-content/uploads/sites/3/2023/05/noface-ghibli-park.jpg',
+  'ikoma-sanjo': 'https://res.klook.com/image/upload/w_500,h_313,c_fill,q_85/activities/b5t01dn87japgrpyvnil.jpg',
+  'hozenji-yokocho': 'https://cdn.osaka-info.jp/page_translation/content/09e146a0-c320-11e9-a320-0af0cba29dd8.jpeg',
+  'magic-cafe-bar': 'https://cdn.corner.inc/place-photo/AWU5eFha7GldFqeQpFz82ZLD9nw0aOPE5mn1sW8vDHK-OLXNbdhZRCb2bvj5r9RuyvEEsQqIK7eeCVXYv9cFAPiiMfLtquNG88XDs91Qfa-Q9VLLzKYq2XXkRtMmkK7IVHID9W4KNJYsWyv7qPlvATv1OSBtfHkPgTu5W8LWe62J__E-rZmy.jpeg',
+  'nara-park': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDzjg71mi9KVT6qi2TsbE10q-0EEmVy6DdHEf12OhWI3CEmDZwi7oY_-E&s=10',
+  'kobe-heso': 'https://tblg.k-img.com/restaurant/images/Rvw/370683/640x640_rect_abc27fad6ed38d0cadde51ca1e27e785.jpg',
+  'basketball-bar': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRcYMJ5SEwJir8LJJR0nKoaCJmZnXLpcm2pv99pSWOa8sckFLUlTPbGC3Q&s=10',
+  'taptap-ring': 'https://static.wixstatic.com/media/7c7d0e_6ed0ace8d6714bc09a06af8f48785bdb~mv2.png/v1/fill/w_698,h_686,al_c,q_90,usm_0.66_1.00_0.01,enc_avif,quality_auto/IMG_1460_HEIC.png',
+  'fushimi-inari': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSCJylbj1rwKD1NXi8DtMNkYCjMoWpWUcQ_cURSxHSmmixTOMCdMwXzsHHv&s=10',
+  'hozugawa-boat': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS6QDDiNBR8qvH7Jq-Mmm2LYGljazv9839ImdAU3uddUKEG2gg_PFnPnP5d&s=10',
+  'ito-okashi': 'https://tblg.k-img.com/restaurant/images/Rvw/357706/640x640_rect_3af7df5162773594c4db37a84b133645.jpg',
+  'uji': 'https://japanandmore.com/wp-content/uploads/2021/03/Byodoin-Temple-in-Uji-Japan.jpg',
+  'ine': 'https://article-image.travel.navitime.jp/img/NTJtrv0727-en/top.jpeg',
+  'hokanji': 'https://res.klook.com/image/upload/w_500,h_313,c_fill,q_85/activities/cag4dmwoyxegjjolg2n7.jpg',
+  'kinkakuji': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE0pyGhZiAjwmto25AJneP3tV0hwszWFEp3sBFVIXOK_ZLN770nQDj0nOB&s=10',
+  'nishiki-market': 'https://res.klook.com/image/upload/w_750,h_469,c_fill,q_85/w_80,x_15,y_15,g_south_west,l_Klook_water_br_trans_yhcmh3/activities/hd7zdmnfr7tjxlyjpjy3.jpg',
+  'gion': 'https://cdn.gaijinpot.com/app/uploads/sites/6/2016/05/Gion-1024x683.jpg',
+  'arashiyama': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSjgzeUTfwnO24SOq2JJs_a6hvYXaadh7KiFCkOlB6a6u9JwrOcr6XgFSo&s=10',
+  'round1-kyoto': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRtFIHNZeHbU5to_qX2nmEKBqzcAi1XfEzgb3o-holvJ5uRcYeFh8S_JZ6A&s=10',
+  'kitsune-kyoto': 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2f/18/3f/67/no1-nightclub-in-kyoto.jpg?w=900&h=500&s=1',
+  'kuoe-kyoto': 'https://www.watchuseek.com/attachments/1732232164873-png.18726940/',
+  'ichiran-kyoto': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ1acKbTDUTiOBl9U0CYDWDjQbK0mjGSYmHpcJGG6dzqdtQSj71vFCkd7x9&s=10',
+  'hayakawa-knife': 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/14/e8/73/07/20181001-122619-largejpg.jpg?w=900&h=-1&s=1',
+  'hikiniku': 'https://i0.wp.com/samurai-gourmet.com/wp-content/uploads/2024/03/2021_05_IMG_0692-2.jpg?resize=750%2C500&ssl=1',
+  'miyajima': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTJXXNpoPSa8u2BDs5mUCqLC15_DkN6PHRCWZcwyW-wEU3liTYznTssdGkV&s=10',
+  'kiyomizu': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSCMz1nkQUmK7_1IIakaS0uSmjy7k7Gd_TEX-AgLCIDFms1boUE-RFxcwf5&s=10',
+  'sannenzaka': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7F27MCPabVU4GtXTaxvo8p37lfk19D-9GOSJK_6-nPn6mTqXrsTBkUo00&s=10',
+  'pontocho': 'https://res.klook.com/image/upload/w_500,h_313,c_fill,q_85/activities/ltwo5la4jlywe41bcqry.jpg',
+  'kimono-rental': 'https://www.sixmilesaway.com/wp-content/uploads/2019/09/cheap-kimono-rental-in-kyoto-at-our-Airbnb-experience-1024x576.jpg',
+  'nakazakicho': 'https://place.matcha-jp.com/resize/1280x2000/2022/09/30-18-01-47-7339ef3458944469792f82328d6b373d.webp?w=656',
+  'tenjinbashi': 'https://cdn.gaijinpot.com/app/uploads/sites/6/2017/01/Tenjinbashi-suji-.jpg',
+  'america-mura-kyoto': 'https://www.happyjappy.com/wp-content/uploads/osaka-Amerika-Mura-jpg.webp',
+  'aeon-kyoto': 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2d/2d/38/95/caption.jpg?w=1200&h=1200&s=1',
+};
+
 const PHOTO_OVERRIDES = {
   'teamlab-planets':'teamlab planets digital art',
   'shibuya-sky':'shibuya sky observation deck tokyo',
@@ -853,6 +1199,31 @@ const ESTIMATES = [
   {label:'Lodging total (est.)', amount:'$2,900–$3,200'},
 ];
 
+const PHRASES = [
+  {jp:'すみません', romaji:'Sumimasen', en:'Excuse me / Sorry', note:'The single most useful phrase in Japan — use it to get attention, apologize, or squeeze past someone.'},
+  {jp:'ありがとうございます', romaji:'Arigatou gozaimasu', en:'Thank you'},
+  {jp:'お願いします', romaji:'Onegaishimasu', en:'Please', note:'Use when handing something over or making a request'},
+  {jp:'これをください', romaji:'Kore wo kudasai', en:'This one, please', note:'Point at a menu item or product'},
+  {jp:'いくらですか', romaji:'Ikura desu ka', en:'How much is it?'},
+  {jp:'英語を話せますか', romaji:'Eigo wo hanasemasu ka', en:'Do you speak English?'},
+  {jp:'トイレはどこですか', romaji:'Toire wa doko desu ka', en:'Where is the bathroom?'},
+  {jp:'お会計お願いします', romaji:'Okaikei onegaishimasu', en:'Check, please'},
+  {jp:'乾杯', romaji:'Kanpai', en:'Cheers!'},
+  {jp:'美味しい', romaji:'Oishii', en:'Delicious'},
+  {jp:'大丈夫です', romaji:'Daijoubu desu', en:"I'm okay / No thank you", note:'Polite way to decline something'},
+  {jp:'助けてください', romaji:'Tasukete kudasai', en:'Please help me', note:'For actual emergencies'},
+];
+
+const TRAIN_TIPS = [
+  {icon:'💳', title:'Tap in, tap out', desc:'Your Suica/IC card works on almost every train, subway, and bus in Tokyo, Osaka, and Kyoto — just tap on entry and exit. No ticket needed for most rides.'},
+  {icon:'🎫', title:'JR Pass ≠ everything', desc:'Your JR Pass covers JR lines and the Shinkansen, but not Tokyo Metro, Toei subway, or Osaka Metro lines — those are separate companies. Check which line you\'re on before assuming it\'s covered.'},
+  {icon:'🚶', title:'Escalator side flips by city', desc:'In Tokyo, stand on the left, walk on the right. In Osaka, it flips — stand right, walk left. Kyoto generally follows Tokyo\'s side.'},
+  {icon:'🧳', title:'Big bags need a reservation on the Shinkansen', desc:'If your luggage is over 160cm (all sides combined), you legally need to book an oversized-baggage seat in advance or gate staff can turn you away. Check when booking Shinkansen seats.'},
+  {icon:'🔇', title:'No phone calls on board', desc:'Keep your phone on silent and don\'t take calls in the train car — texting and silent scrolling is fine, talking on the phone is not.'},
+  {icon:'🕛', title:'Trains stop running around midnight', desc:'Most lines shut down between 12–1am and don\'t restart until ~5am. Plan your last train home or budget for a taxi if you\'re out late (looking at you, Golden-Gai night).'},
+  {icon:'📱', title:'Let your maps app do the platform math', desc:'Google Maps and the Japan Transit Planner app both show the exact platform and even which train car to stand at for the fastest transfer — worth using over guessing.'},
+];
+
 const LODGING = [
   {city:'Tokyo', label:'Stay 1', dates:'Nov 28 – Dec 1', place:'Sotetsu Fresa Inn Tokyo Kyobashi', booked:true},
   {city:'Osaka', label:'', dates:'Dec 1 – 4', place:'Airbnb, Nishishinsaibashi', booked:true},
@@ -874,10 +1245,15 @@ const DEFAULT_PACKING = [
 let sharedState = { expenses:[], doneIds:{}, budgetTotal:4000, packing:null };
 
 function imgFor(item, size){
+  if(MANUAL_IMAGE_URLS[item.id]) return MANUAL_IMAGE_URLS[item.id];
   size = size || '400/300';
-  const raw = PHOTO_OVERRIDES[item.id] || `${item.name.replace(/[（）()「」【】]/g,'')},${item.city},japan`;
-  const q = encodeURIComponent(raw);
+  const q = encodeURIComponent(loremQueryFor(item));
   return `https://loremflickr.com/${size}/${q}`;
+}
+// Only attach a live-lookup query for items with no manual link — a
+// manually chosen photo should never get silently overwritten by an API.
+function photoQueryAttr(item){
+  return MANUAL_IMAGE_URLS[item.id] ? '' : `data-photo-query="${escapeHtml(photoQueryFor(item))}"`;
 }
 function cityBannerImg(city){
   const b = CITY_BANNERS[city];
@@ -886,6 +1262,29 @@ function cityBannerImg(city){
 function mapUrl(item){
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name + ' ' + item.city + ' Japan')}`;
 }
+
+// Guaranteed-to-render fallback — a plain SVG, no network needed, so a
+// broken image icon (with its ugly overlapping alt text) can never show.
+function svgFallback(catKey){
+  const color = (CAT_COLOR[catKey] || '#948E9C').replace('#','%23');
+  const label = encodeURIComponent(CAT_LABEL[catKey] || 'Japan');
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='100%25' height='100%25' fill='%2316141C'/%3E%3Crect width='100%25' height='100%25' fill='${color}' fill-opacity='0.14'/%3E%3Ctext x='50%25' y='50%25' font-family='sans-serif' font-size='18' fill='${color}' text-anchor='middle' dominant-baseline='middle'%3E${label}%3C/text%3E%3C/svg%3E`;
+}
+
+// One retry with a plain query, then the SVG fallback — never a broken icon.
+window.handleImgError = function(img){
+  const attempt = parseInt(img.dataset.retry || '0', 10);
+  if(attempt === 0){
+    img.dataset.retry = '1';
+    const cat = img.dataset.cat || 'activity';
+    const query = CAT_GENERIC_QUERY[cat] || 'japan travel scenic';
+    img.src = `https://loremflickr.com/400/300/${encodeURIComponent(query)}?r=${Math.floor(Math.random()*100000)}`;
+  } else {
+    img.onerror = null;
+    img.alt = '';
+    img.src = svgFallback(img.dataset.cat);
+  }
+};
 
 /* ---------- Itinerary render ---------- */
 const ICONS = {food:'🍜', bar:'🍸', activity:'✦', shop:'🛍', photo:'📷'};
@@ -903,7 +1302,7 @@ function dayCardHtml(day, idx){
   const itemsHtml = day.items.map(it=>{
     const match = findActivityFor(it.name, day.city);
     const media = match
-      ? `<img class="thumb" loading="eager" src="${imgFor(match)}" data-photo-query="${escapeHtml((PHOTO_OVERRIDES[match.id]||match.name)+' japan')}" alt="">`
+      ? `<img class="thumb" loading="eager" src="${imgFor(match)}" ${photoQueryAttr(match)} data-cat="${match.category}" onerror="handleImgError(this)" onload="this.style.opacity=1" alt="">`
       : `<span class="ic">${ICONS[it.tag]||'•'}</span>`;
     return `<li>${media} ${escapeHtml(it.name)} ${it.price?`<span class="price">${escapeHtml(formatPrice(it.price))}</span>`:''}</li>`;
   }).join('') || '<li style="color:var(--dim); border:none;">Open day — nothing locked in yet.</li>';
@@ -938,7 +1337,7 @@ function bannerHtml(city){
   const b = CITY_BANNERS[city];
   return `
     <div class="city-banner reveal city-${city}">
-      <img loading="eager" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(city)} japan skyline" alt="${city}">
+      <img loading="eager" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(city)} japan skyline" data-cat="activity" onerror="handleImgError(this)" onload="this.style.opacity=1" alt="${city}">
       <div class="banner-fade"></div>
       <div class="banner-content">
         <div class="banner-name display">${city}</div>
@@ -1054,7 +1453,7 @@ function cardHtml(a){
   return `
     <div class="card reveal ${done?'is-done':''}" data-id="${a.id}">
       <div class="media">
-        <img loading="eager" src="${imgFor(a)}" data-photo-query="${escapeHtml((PHOTO_OVERRIDES[a.id]||a.name)+' japan')}" alt="${escapeHtml(a.name)}">
+        <img loading="eager" src="${imgFor(a)}" ${photoQueryAttr(a)} data-cat="${a.category}" onerror="handleImgError(this)" onload="this.style.opacity=1" alt="${escapeHtml(a.name)}">
         <div class="media-fade"></div>
         <div class="card-top">
           <span class="chip-btn" style="pointer-events:none; padding:2px 9px; font-size:10px; border-color:${CAT_COLOR[a.category]}; color:${CAT_COLOR[a.category]}; background:rgba(10,10,13,0.55); backdrop-filter:blur(3px);">${CAT_LABEL[a.category]}</span>
@@ -1086,7 +1485,7 @@ function renderExplore(){
     return `
       <div class="explore-city-section" id="city-${city}">
         <div class="city-banner reveal city-${city}">
-          <img loading="eager" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(city)} japan skyline" alt="${city}">
+          <img loading="eager" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(city)} japan skyline" data-cat="activity" onerror="handleImgError(this)" onload="this.style.opacity=1" alt="${city}">
           <div class="banner-fade"></div>
           <div class="banner-content">
             <div class="banner-name display">${city}<span class="section-count">${items.length} places</span></div>
@@ -1118,7 +1517,7 @@ function showSurprise(){
   overlay.innerHTML = `
     <div class="surprise-card">
       <div class="media" style="position:relative;">
-        <img loading="eager" src="${imgFor(pick)}" data-photo-query="${escapeHtml((PHOTO_OVERRIDES[pick.id]||pick.name)+' japan')}" alt="${escapeHtml(pick.name)}">
+        <img loading="eager" src="${imgFor(pick)}" ${photoQueryAttr(pick)} data-cat="${pick.category}" onerror="handleImgError(this)" onload="this.style.opacity=1" alt="${escapeHtml(pick.name)}">
         <div class="media-fade"></div>
         <button class="surprise-close" id="surpriseClose">✕</button>
         <p class="s-name">${escapeHtml(pick.name)}</p>
@@ -1140,6 +1539,28 @@ function showSurprise(){
 document.getElementById('surpriseBtn').addEventListener('click', showSurprise);
 
 /* ---------- Book tab ---------- */
+/* ---------- Guide tab ---------- */
+function renderGuide(){
+  document.getElementById('phraseList').innerHTML = PHRASES.map(p=>`
+    <div class="phrase-card">
+      <div class="p-jp">${escapeHtml(p.jp)}</div>
+      <div class="p-romaji">${escapeHtml(p.romaji)}</div>
+      <div class="p-en">${escapeHtml(p.en)}</div>
+      ${p.note?`<div class="p-note">${escapeHtml(p.note)}</div>`:''}
+    </div>
+  `).join('');
+
+  document.getElementById('trainTips').innerHTML = TRAIN_TIPS.map(t=>`
+    <div class="tip-row">
+      <span class="t-icon">${t.icon}</span>
+      <div>
+        <div class="t-title">${escapeHtml(t.title)}</div>
+        <div class="t-desc">${escapeHtml(t.desc)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
 function renderBookings(){
   document.getElementById('lodgingList').innerHTML = LODGING.map(l=>`
     <div class="lodging-row">
@@ -1193,6 +1614,10 @@ function renderEstimates(){
 }
 
 function fmt(n){ return '$' + n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtCur(n){
+  if(currency === 'JPY') return '¥' + Math.round(n * JPY_RATE).toLocaleString();
+  return fmt(n);
+}
 function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 /* ---------- Pack list ---------- */
@@ -1204,6 +1629,17 @@ function ensurePacking(){
 
 function renderPack(){
   ensurePacking();
+  const total = sharedState.packing.length;
+  const done = sharedState.packing.filter(p=>p.done).length;
+  const pct = total > 0 ? Math.round((done/total)*100) : 0;
+  document.getElementById('packProgress').innerHTML = `
+    <div class="pp-top">
+      <span class="pp-label">Packed</span>
+      <span class="pp-count">${done} of ${total}</span>
+    </div>
+    <div class="pp-track"><div class="pp-fill" style="width:${pct}%;"></div></div>
+  `;
+
   const list = document.getElementById('packList');
   list.innerHTML = sharedState.packing.map(item=>`
     <li class="${item.done?'done':''}">
@@ -1241,15 +1677,41 @@ document.getElementById('packForm').addEventListener('submit', e=>{
   input.focus();
 });
 
+const BUDGET_CAT_COLOR = {
+  Food:'#F4A63D', Lodging:'#9E8CF5', Transit:'#3FBF8F',
+  Activities:'#FF3D8A', Shopping:'#4F9BD9', 'Bar/Night':'#FF4B3E', Other:'#948E9C',
+};
+
+const REDUCE_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function animateNumber(el, toValue, formatFn){
+  const fromValue = parseFloat(el.dataset.rawValue || '0');
+  if(REDUCE_MOTION || Math.abs(toValue - fromValue) < 0.005){
+    el.textContent = formatFn(toValue);
+    el.dataset.rawValue = toValue;
+    return;
+  }
+  const duration = 550;
+  const start = performance.now();
+  function step(now){
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = formatFn(fromValue + (toValue - fromValue) * eased);
+    if(t < 1) requestAnimationFrame(step);
+    else el.dataset.rawValue = toValue;
+  }
+  requestAnimationFrame(step);
+}
+
 function renderBudget(){
   const expenses = sharedState.expenses || [];
   const budgetTotal = sharedState.budgetTotal || 0;
   const spent = expenses.reduce((s,e)=>s+e.amount,0);
   const remaining = budgetTotal - spent;
 
-  document.getElementById('budgetTotalDisplay').textContent = fmt(budgetTotal);
-  document.getElementById('statSpent').textContent = fmt(spent);
-  document.getElementById('statRemaining').textContent = fmt(remaining);
+  document.getElementById('budgetTotalLabel').textContent = `Remaining of ${fmtCur(budgetTotal)} budget`;
+  animateNumber(document.getElementById('budgetTotalDisplay'), budgetTotal, fmtCur);
+  animateNumber(document.getElementById('statSpent'), spent, fmtCur);
+  animateNumber(document.getElementById('statRemaining'), remaining, fmtCur);
   document.getElementById('statRemaining').style.color = remaining < 0 ? 'var(--red)' : '';
 
   const pct = budgetTotal > 0 ? Math.min(100, (spent/budgetTotal)*100) : 0;
@@ -1257,6 +1719,27 @@ function renderBudget(){
   fill.style.width = pct + '%';
   fill.classList.toggle('over', spent > budgetTotal);
 
+  // Category breakdown
+  const breakdown = document.getElementById('categoryBreakdown');
+  if(expenses.length === 0){
+    breakdown.innerHTML = '';
+  } else {
+    const byCat = {};
+    expenses.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + e.amount; });
+    const rows = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat, amt])=>{
+      const catPct = spent > 0 ? Math.round((amt/spent)*100) : 0;
+      const color = BUDGET_CAT_COLOR[cat] || '#948E9C';
+      return `
+        <div class="cat-bar-row">
+          <span class="cat-name">${escapeHtml(cat)}</span>
+          <span class="cat-bar-track"><span class="cat-bar-fill" style="width:${catPct}%; background:${color};"></span></span>
+          <span class="cat-bar-amt">${fmtCur(amt)}</span>
+        </div>`;
+    }).join('');
+    breakdown.innerHTML = `<div class="cat-breakdown"><div class="sec-title">By category</div>${rows}</div>`;
+  }
+
+  // Ledger
   const body = document.getElementById('ledgerBody');
   const emptyMsg = document.getElementById('ledgerEmpty');
   body.innerHTML = '';
@@ -1264,17 +1747,18 @@ function renderBudget(){
     emptyMsg.style.display = 'block';
   } else {
     emptyMsg.style.display = 'none';
-    expenses.slice().reverse().forEach((exp)=>{
+    body.innerHTML = expenses.slice().reverse().map((exp)=>{
       const realIdx = expenses.indexOf(exp);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${escapeHtml(exp.desc)}</td>
-        <td>${escapeHtml(exp.category)}</td>
-        <td style="text-align:right;">${fmt(exp.amount)}</td>
-        <td><button class="del-btn" data-idx="${realIdx}">✕</button></td>
-      `;
-      body.appendChild(tr);
-    });
+      const color = BUDGET_CAT_COLOR[exp.category] || '#948E9C';
+      return `
+        <div class="ledger-row">
+          <span class="cat-dot" style="background:${color};"></span>
+          <span class="l-desc">${escapeHtml(exp.desc)}</span>
+          <span class="l-cat">${escapeHtml(exp.category)}</span>
+          <span class="l-amt">${fmtCur(exp.amount)}</span>
+          <button class="del-btn" data-idx="${realIdx}">✕</button>
+        </div>`;
+    }).join('');
     body.querySelectorAll('.del-btn').forEach(btn=>{
       btn.addEventListener('click', e=>{
         sharedState.expenses.splice(+e.target.dataset.idx,1);
@@ -1296,28 +1780,96 @@ document.getElementById('editBudgetBtn').addEventListener('click', ()=>{
 });
 
 /* ---------- Firestore sync ---------- */
-function setSync(){
-  const dot = document.getElementById('syncDot');
-  const text = document.getElementById('syncText');
-  dot.classList.add('off');
-  text.textContent = 'Saved on this device only (not shared yet)';
-}
-
-function saveState(){
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(sharedState));
-}
-
-function initSync(){
-  setSync();
-  const cached = localStorage.getItem(LOCAL_KEY);
-  if(cached){
-    try{ sharedState = Object.assign({expenses:[], doneIds:{}, budgetTotal:4000}, JSON.parse(cached)); }catch(e){}
-  }
+function renderAll(){
   renderBudget();
   renderExplore();
   renderPack();
   renderBookings();
+  renderGuide();
 }
+
+function setSync(status){
+  const dot = document.getElementById('syncDot');
+  const text = document.getElementById('syncText');
+  const codeBtn = document.getElementById('tripCodeBtn');
+  const code = getTripCode();
+
+  if(status === 'live'){
+    dot.classList.remove('off');
+    text.textContent = code ? `Synced live · trip code "${code}"` : 'Synced live';
+  } else if(status === 'offline'){
+    dot.classList.add('off');
+    text.textContent = `Offline — will sync when back online (code "${code}")`;
+  } else if(status === 'no-code'){
+    dot.classList.add('off');
+    text.textContent = 'Not synced — set a trip code to share with your partner';
+  } else {
+    dot.classList.add('off');
+    text.textContent = 'Saved on this device only (not shared yet)';
+  }
+  codeBtn.textContent = code ? `Code: ${code}` : 'Set trip code';
+}
+
+let unsubscribeTrip = null;
+
+function saveState(){
+  if(firebaseReady && getTripCode()){
+    tripDoc().set(sharedState, {merge:false}).catch(e=>console.error('save failed', e));
+  } else {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(sharedState));
+  }
+}
+
+function connectToTrip(){
+  if(unsubscribeTrip){ unsubscribeTrip(); unsubscribeTrip = null; }
+  const code = getTripCode();
+
+  if(!firebaseReady){
+    setSync('local');
+    const cached = localStorage.getItem(LOCAL_KEY);
+    if(cached){
+      try{ sharedState = Object.assign({expenses:[], doneIds:{}, budgetTotal:4000, packing:null}, JSON.parse(cached)); }catch(e){}
+    }
+    renderAll();
+    return;
+  }
+
+  if(!code){
+    setSync('no-code');
+    renderAll();
+    return;
+  }
+
+  unsubscribeTrip = tripDoc().onSnapshot(doc=>{
+    if(doc.exists){
+      sharedState = Object.assign({expenses:[], doneIds:{}, budgetTotal:4000, packing:null}, doc.data());
+    } else {
+      sharedState = {expenses:[], doneIds:{}, budgetTotal:4000, packing:null};
+      tripDoc().set(sharedState);
+    }
+    setSync(navigator.onLine ? 'live' : 'offline');
+    renderAll();
+  }, err=>{
+    console.error('sync error', err);
+    setSync('offline');
+  });
+
+  window.addEventListener('online', ()=> setSync('live'));
+  window.addEventListener('offline', ()=> setSync('offline'));
+}
+
+function initSync(){
+  if(firebaseReady && !getTripCode()){
+    const code = promptForTripCode(false);
+    if(!code){ setSync('no-code'); renderAll(); return; }
+  }
+  connectToTrip();
+}
+
+document.getElementById('tripCodeBtn').addEventListener('click', ()=>{
+  const code = promptForTripCode(true);
+  if(code) connectToTrip();
+});
 
 /* ---------- Tabs ---------- */
 document.querySelectorAll('.tab-btn').forEach(btn=>{
