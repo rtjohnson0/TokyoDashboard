@@ -368,6 +368,9 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
   color:transparent; cursor:pointer; flex-shrink:0; font-size:13px; display:flex; align-items:center; justify-content:center;
 }
 .booked-check.done{background:var(--jade); border-color:var(--jade); color:#062016;}
+.b-edit, .b-delete{
+  background:none; border:none; color:var(--dim); cursor:pointer; font-size:13px; flex-shrink:0;
+}
 
 /* ===== Explore ===== */
 .add-place-btn{
@@ -478,6 +481,11 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
 .card .media .media-fade{position:absolute; inset:0; background:linear-gradient(180deg, transparent 40%, rgba(10,10,13,0.85) 100%);}
 @keyframes shimmer{0%{background-position:100% 0;} 100%{background-position:0 0;}}
 .card .media .card-top{position:absolute; left:10px; top:10px; right:10px; margin:0;}
+.card-edit-btn{
+  margin-left:auto; width:26px; height:26px; border-radius:50%; flex-shrink:0;
+  background:rgba(10,10,13,0.55); backdrop-filter:blur(3px); border:1px solid rgba(255,255,255,0.25);
+  color:var(--paper); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
 .card .media .card-name{position:absolute; left:12px; right:12px; bottom:8px; margin:0; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,0.7);}
 .card-body{padding:10px 14px 14px;}
 .card-top{display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap;}
@@ -678,6 +686,9 @@ button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
 /* Hover effects only for devices that actually have a mouse — prevents
    stuck/ghost highlight states on touch after the list re-renders. */
 @media (hover: hover) and (pointer: fine) {
+  .card-edit-btn:hover{border-color:var(--amber); color:var(--amber);}
+  .b-edit:hover{color:var(--amber);}
+  .b-delete:hover{color:var(--red);}
   .booking-row .b-cal:hover{border-color:var(--amber); color:var(--amber);}
   .tab-btn:hover:not(.active){border-color:var(--amber); color:var(--amber);}
   .currency-toggle:hover{border-color:var(--amber);}
@@ -790,6 +801,7 @@ button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
     <div class="sec-sub">Lodging status, then everything with a booking window — soonest first.</div>
     <div id="lodgingList"></div>
     <div class="sec-title" style="margin-top:26px; font-size:16px;">Book by date</div>
+    <button class="add-place-btn" id="addBookingBtn">+ Add a reservation</button>
     <div id="bookingList"></div>
     <div class="sec-title" style="margin-top:22px; font-size:16px;">Book ahead — no fixed date</div>
     <div id="noDeadlineList"></div>
@@ -1431,9 +1443,14 @@ const DEFAULT_PACKING = [
 let sharedState = { expenses:[], itemStatus:{}, customActivities:[], budgetTotal:4000, packing:null };
 
 // A place is either built-in (ACTIVITIES) or user-added (sharedState.customActivities).
-// This always returns the full combined pool for rendering.
+// This always returns the full combined pool for rendering, with any saved
+// edits to built-in places (activityOverrides) merged in.
 function allActivities(){
-  return ACTIVITIES.concat(sharedState.customActivities || []);
+  const overridden = ACTIVITIES.map(a=>{
+    const ov = sharedState.activityOverrides && sharedState.activityOverrides[a.id];
+    return ov ? Object.assign({}, a, ov) : a;
+  });
+  return overridden.concat(sharedState.customActivities || []);
 }
 function getStatus(id){
   return (sharedState.itemStatus || {})[id] || 'active';
@@ -1921,6 +1938,7 @@ function cardHtml(a, view){
         <div class="media-fade"></div>
         <div class="card-top">
           <span class="chip-btn" style="pointer-events:none; padding:2px 9px; font-size:10px; border-color:${CAT_COLOR[a.category]}; color:${CAT_COLOR[a.category]}; background:rgba(10,10,13,0.55); backdrop-filter:blur(3px);">${CAT_LABEL[a.category]}</span>
+          <button class="card-edit-btn" data-id="${a.id}" title="Edit">✎</button>
         </div>
         <div class="card-name">${escapeHtml(a.name)}</div>
       </div>
@@ -1999,6 +2017,12 @@ function renderExplore(){
       }
       renderViewTabs();
       renderExplore();
+    });
+  });
+  wrap.querySelectorAll('.card-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      showEditActivity(btn.dataset.id);
     });
   });
   hydrateUnsplashImages();
@@ -2095,6 +2119,97 @@ function showAddPlaceForm(){
   });
 }
 
+function showEditActivity(id){
+  const item = allActivities().find(a=>a.id===id);
+  if(!item) return;
+  const isCustom = !!item.custom;
+  const overlay = document.createElement('div');
+  overlay.className = 'surprise-overlay';
+  overlay.innerHTML = `
+    <div class="form-card">
+      <h3>Edit place</h3>
+      <label>Title</label>
+      <input type="text" id="epName" value="${escapeHtml(item.name)}">
+      <div class="row2">
+        <div>
+          <label>City</label>
+          <select id="epCity">${['Tokyo','Osaka','Kyoto'].map(c=>`<option ${c===item.city?'selected':''}>${c}</option>`).join('')}</select>
+        </div>
+        <div>
+          <label>Category</label>
+          <select id="epCategory">${Object.keys(CAT_LABEL).map(c=>`<option value="${c}" ${c===item.category?'selected':''}>${CAT_LABEL[c]}</option>`).join('')}</select>
+        </div>
+      </div>
+      <label>Description</label>
+      <textarea id="epNotes">${escapeHtml(item.notes||'')}</textarea>
+      <label>Photo</label>
+      <div class="file-drop" id="epDrop">
+        <div id="epPreviewWrap">${item.customImage ? `<img src="${item.customImage}" alt="">` : 'Tap to choose a photo'}</div>
+        <input type="file" id="epFile" accept="image/*" style="display:none;">
+      </div>
+      <div class="form-hint">${isCustom ? 'This is a place you added — changes apply directly.' : "This is one of the curated spots — your edits personalize it for your trip, they don't change the original."}</div>
+      <div class="form-actions">
+        <button class="btn-cancel" id="epCancel">Cancel</button>
+        <button class="btn-save" id="epSave">Save</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  let imageDataUrl = item.customImage || null;
+  const drop = overlay.querySelector('#epDrop');
+  const fileInput = overlay.querySelector('#epFile');
+  const previewWrap = overlay.querySelector('#epPreviewWrap');
+  drop.addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', ()=>{
+    const file = fileInput.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const maxW = 640;
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        imageDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        previewWrap.innerHTML = `<img src="${imageDataUrl}" alt="">`;
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#epCancel').addEventListener('click', ()=> overlay.remove());
+  overlay.querySelector('#epSave').addEventListener('click', ()=>{
+    const nameInput = overlay.querySelector('#epName');
+    const name = nameInput.value.trim();
+    if(!name){ nameInput.focus(); return; }
+    const city = overlay.querySelector('#epCity').value;
+    const category = overlay.querySelector('#epCategory').value;
+    const notes = overlay.querySelector('#epNotes').value.trim();
+
+    if(isCustom){
+      const stored = sharedState.customActivities.find(c=>c.id===id);
+      stored.name = name; stored.city = city; stored.category = category; stored.notes = notes;
+      if(imageDataUrl) stored.customImage = imageDataUrl;
+    } else {
+      if(!sharedState.activityOverrides) sharedState.activityOverrides = {};
+      const ov = { name, city, category, notes };
+      if(imageDataUrl) ov.customImage = imageDataUrl;
+      sharedState.activityOverrides[id] = ov;
+    }
+    saveState();
+    overlay.remove();
+    renderViewTabs();
+    renderExplore();
+    renderItinerary();
+  });
+}
+
 
 /* ---------- Surprise me ---------- */
 function showSurprise(){
@@ -2158,6 +2273,46 @@ function setBooked(id, val){
   saveState();
 }
 
+function getBookByDate(a){
+  const override = sharedState.bookByOverrides && sharedState.bookByOverrides[a.id];
+  if(override) return new Date(override + 'T00:00:00');
+  return parseBookByDate(a.bookBy);
+}
+function isoFromDate(d){ return d ? d.toISOString().slice(0,10) : ''; }
+
+// Unified list: built-in dated activities (with any date override applied)
+// plus any custom reservations you've added — always re-sorted soonest-first.
+function getAllBookings(){
+  const built = ACTIVITIES.filter(a=>a.bookBy && !NO_DEADLINE_IDS.includes(a.id)).map(a=>{
+    const override = sharedState.bookByOverrides && sharedState.bookByOverrides[a.id];
+    return {
+      id: a.id, name: a.name, city: a.city, custom: false,
+      date: getBookByDate(a),
+      meta: override ? null : a.bookBy,
+    };
+  });
+  const custom = (sharedState.customBookings || []).map(cb=>({
+    id: cb.id, name: cb.name, city: cb.city, custom: true,
+    date: cb.date ? new Date(cb.date + 'T00:00:00') : null,
+    meta: cb.notes || null,
+  }));
+  return built.concat(custom).sort((x,y)=>{
+    if(!x.date && !y.date) return 0;
+    if(!x.date) return 1;
+    if(!y.date) return -1;
+    return x.date - y.date;
+  });
+}
+
+function bookingCalUrl(item){
+  if(!item.date) return null;
+  const d0 = item.date.toISOString().slice(0,10).replace(/-/g,'');
+  const d1 = new Date(item.date.getTime()+86400000).toISOString().slice(0,10).replace(/-/g,'');
+  const text = encodeURIComponent('Book: ' + item.name);
+  const details = encodeURIComponent(item.meta || `Booking deadline for ${item.name}`);
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${d0}/${d1}&details=${details}`;
+}
+
 function renderBookings(){
   document.getElementById('lodgingList').innerHTML = LODGING.map(l=>`
     <div class="lodging-row">
@@ -2167,34 +2322,47 @@ function renderBookings(){
     </div>
   `).join('');
 
-  const withDates = ACTIVITIES.filter(a=>a.bookBy && !NO_DEADLINE_IDS.includes(a.id))
-    .map(a=>({a, date: parseBookByDate(a.bookBy)}))
-    .sort((x,y)=>{
-      if(!x.date && !y.date) return 0;
-      if(!x.date) return 1;
-      if(!y.date) return -1;
-      return x.date - y.date;
-    });
-
   const now = new Date();
-  document.getElementById('bookingList').innerHTML = withDates.map(({a,date})=>{
-    const cal = gcalUrl(a);
-    const booked = getBooked(a.id);
+  const all = getAllBookings();
+
+  document.getElementById('bookingList').innerHTML = all.map(item=>{
+    const cal = bookingCalUrl(item);
+    const booked = getBooked(item.id);
     let daysBadge = '';
-    if(date && !booked){
-      const days = Math.ceil((date - now)/86400000);
+    if(item.date && !booked){
+      const days = Math.ceil((item.date - now)/86400000);
       const label = days < 0 ? 'Deadline passed' : days === 0 ? 'Today' : `${days} days left`;
       daysBadge = `<span class="b-days ${days>=0 && days<=14 ? 'urgent':''}">${label}</span>`;
     }
+    const metaText = booked ? 'Booked' : (item.meta || (item.date ? `Book by ${item.date.toLocaleDateString(undefined,{month:'short',day:'numeric'})}` : 'No date set'));
     return `
       <div class="booking-row ${booked?'is-booked':''}">
-        <button class="booked-check ${booked?'done':''}" data-id="${a.id}" title="${booked?'Mark not booked':'Mark booked'}">${booked?'✓':''}</button>
-        <span class="b-name">${escapeHtml(a.name)} <span style="color:var(--dim); font-weight:400;">— ${a.city}</span></span>
-        <span class="b-meta">${booked?'Booked':escapeHtml(a.bookBy)}</span>
+        <button class="booked-check ${booked?'done':''}" data-id="${item.id}" title="${booked?'Mark not booked':'Mark booked'}">${booked?'✓':''}</button>
+        <span class="b-name">${escapeHtml(item.name)} <span style="color:var(--dim); font-weight:400;">— ${item.city}</span></span>
+        <span class="b-meta">${escapeHtml(metaText)}</span>
         ${daysBadge}
+        <button class="b-edit" data-id="${item.id}" data-custom="${item.custom?'1':'0'}" title="Edit date">✎</button>
         ${cal?`<a class="b-cal" target="_blank" rel="noopener" href="${cal}">Add to calendar</a>`:''}
+        ${item.custom?`<button class="b-delete" data-id="${item.id}" title="Remove">✕</button>`:''}
       </div>`;
-  }).join('') || '<div class="empty">Nothing with a fixed deadline right now.</div>';
+  }).join('') || '<div class="empty">Nothing with a fixed deadline right now. Tap "+ Add a reservation" to add one.</div>';
+
+  document.querySelectorAll('.booked-check').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      setBooked(btn.dataset.id, !getBooked(btn.dataset.id));
+      renderBookings();
+    });
+  });
+  document.querySelectorAll('.b-edit').forEach(btn=>{
+    btn.addEventListener('click', ()=> showEditBooking(btn.dataset.id, btn.dataset.custom === '1'));
+  });
+  document.querySelectorAll('.b-delete').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      sharedState.customBookings = (sharedState.customBookings||[]).filter(cb=>cb.id!==btn.dataset.id);
+      saveState();
+      renderBookings();
+    });
+  });
 
   const noDeadline = ACTIVITIES.filter(a=>NO_DEADLINE_IDS.includes(a.id));
   document.getElementById('noDeadlineList').innerHTML = noDeadline.map(a=>{
@@ -2206,14 +2374,128 @@ function renderBookings(){
       <span class="b-meta">${booked?'Booked':"Book ahead when you're ready — no set deadline, but tickets can sell out closer to the date."}</span>
     </div>`;
   }).join('');
-
-  document.querySelectorAll('.booked-check').forEach(btn=>{
+  document.querySelectorAll('#noDeadlineList .booked-check').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       setBooked(btn.dataset.id, !getBooked(btn.dataset.id));
       renderBookings();
     });
   });
 }
+
+function showEditBooking(id, isCustom){
+  const overlay = document.createElement('div');
+  overlay.className = 'surprise-overlay';
+
+  if(isCustom){
+    const cb = (sharedState.customBookings||[]).find(c=>c.id===id);
+    if(!cb) return;
+    overlay.innerHTML = `
+      <div class="form-card">
+        <h3>Edit reservation</h3>
+        <label>Title</label>
+        <input type="text" id="bkName" value="${escapeHtml(cb.name)}">
+        <div class="row2">
+          <div>
+            <label>City</label>
+            <select id="bkCity">
+              ${['Tokyo','Osaka','Kyoto'].map(c=>`<option ${c===cb.city?'selected':''}>${c}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label>Book by</label>
+            <input type="date" id="bkDate" value="${cb.date||''}">
+          </div>
+        </div>
+        <label>Notes</label>
+        <textarea id="bkNotes">${escapeHtml(cb.notes||'')}</textarea>
+        <div class="form-actions">
+          <button class="btn-cancel" id="bkCancel">Cancel</button>
+          <button class="btn-save" id="bkSave">Save</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+    overlay.querySelector('#bkCancel').addEventListener('click', ()=> overlay.remove());
+    overlay.querySelector('#bkSave').addEventListener('click', ()=>{
+      cb.name = overlay.querySelector('#bkName').value.trim() || cb.name;
+      cb.city = overlay.querySelector('#bkCity').value;
+      cb.date = overlay.querySelector('#bkDate').value;
+      cb.notes = overlay.querySelector('#bkNotes').value.trim();
+      saveState();
+      overlay.remove();
+      renderBookings();
+    });
+  } else {
+    const a = ACTIVITIES.find(x=>x.id===id);
+    if(!a) return;
+    const current = isoFromDate(getBookByDate(a));
+    overlay.innerHTML = `
+      <div class="form-card">
+        <h3>Edit book-by date</h3>
+        <p style="font-size:13px; color:var(--dim); margin:0 0 4px;">${escapeHtml(a.name)}</p>
+        <label>Book by</label>
+        <input type="date" id="bkDate" value="${current}">
+        <div class="form-actions">
+          <button class="btn-cancel" id="bkCancel">Cancel</button>
+          <button class="btn-save" id="bkSave">Save</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+    overlay.querySelector('#bkCancel').addEventListener('click', ()=> overlay.remove());
+    overlay.querySelector('#bkSave').addEventListener('click', ()=>{
+      const val = overlay.querySelector('#bkDate').value;
+      if(!sharedState.bookByOverrides) sharedState.bookByOverrides = {};
+      if(val) sharedState.bookByOverrides[id] = val;
+      else delete sharedState.bookByOverrides[id];
+      saveState();
+      overlay.remove();
+      renderBookings();
+    });
+  }
+}
+
+document.getElementById('addBookingBtn').addEventListener('click', ()=>{
+  const overlay = document.createElement('div');
+  overlay.className = 'surprise-overlay';
+  overlay.innerHTML = `
+    <div class="form-card">
+      <h3>Add a reservation</h3>
+      <label>Title</label>
+      <input type="text" id="bkName" placeholder="e.g. Ghibli Park tickets">
+      <div class="row2">
+        <div>
+          <label>City</label>
+          <select id="bkCity"><option>Tokyo</option><option>Osaka</option><option>Kyoto</option></select>
+        </div>
+        <div>
+          <label>Book by</label>
+          <input type="date" id="bkDate">
+        </div>
+      </div>
+      <label>Notes</label>
+      <textarea id="bkNotes" placeholder="Booking link, price, anything to remember"></textarea>
+      <div class="form-actions">
+        <button class="btn-cancel" id="bkCancel">Cancel</button>
+        <button class="btn-save" id="bkSave">Add</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#bkCancel').addEventListener('click', ()=> overlay.remove());
+  overlay.querySelector('#bkSave').addEventListener('click', ()=>{
+    const name = overlay.querySelector('#bkName').value.trim();
+    if(!name) return;
+    const city = overlay.querySelector('#bkCity').value;
+    const date = overlay.querySelector('#bkDate').value;
+    const notes = overlay.querySelector('#bkNotes').value.trim();
+    if(!sharedState.customBookings) sharedState.customBookings = [];
+    sharedState.customBookings.push({ id:'book-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), name, city, date, notes });
+    saveState();
+    overlay.remove();
+    renderBookings();
+  });
+});
 
 /* ---------- Budget render ---------- */
 function renderEstimates(){
@@ -2554,7 +2836,7 @@ function connectToTrip(){
     setSync('local');
     const cached = localStorage.getItem(LOCAL_KEY);
     if(cached){
-      try{ sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, budgetTotal:4000, packing:null}, JSON.parse(cached)); }catch(e){}
+      try{ sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], budgetTotal:4000, packing:null}, JSON.parse(cached)); }catch(e){}
     }
     renderAll();
     return;
@@ -2568,9 +2850,9 @@ function connectToTrip(){
 
   unsubscribeTrip = tripDoc().onSnapshot(doc=>{
     if(doc.exists){
-      sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, budgetTotal:4000, packing:null}, doc.data());
+      sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], budgetTotal:4000, packing:null}, doc.data());
     } else {
-      sharedState = {expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, budgetTotal:4000, packing:null};
+      sharedState = {expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], budgetTotal:4000, packing:null};
       tripDoc().set(sharedState);
     }
     setSync(navigator.onLine ? 'live' : 'offline');
