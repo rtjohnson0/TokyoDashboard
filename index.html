@@ -652,6 +652,16 @@ button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
   background:none; border:none; color:var(--dim); cursor:pointer; font-size:9px; line-height:1; padding:2px 3px;
 }
 .li-move:disabled{opacity:0.2; cursor:default;}
+.item-note-btn{
+  position:relative; background:none; border:none; color:var(--dim); cursor:pointer;
+  font-size:12px; flex-shrink:0; opacity:0.55;
+}
+.item-note-btn.has-notes{opacity:1; color:var(--amber);}
+.item-note-btn .note-count{
+  position:absolute; top:-5px; right:-6px; background:var(--amber); color:#1a1206;
+  font-family:'IBM Plex Mono',monospace; font-size:8px; font-weight:700; line-height:1;
+  border-radius:50%; width:13px; height:13px; display:flex; align-items:center; justify-content:center;
+}
 .plan-remove{background:none; border:none; color:var(--dim); cursor:pointer; font-size:13px; flex-shrink:0;}
 .add-from-explore-btn{
   display:block; width:100%; margin-top:10px; padding:10px;
@@ -1564,8 +1574,10 @@ function planItemLi(entry, idx, isFirst, isLast){
   const checkbox = match
     ? `<button class="plan-check ${done?'done':''}" data-id="${match.id}" title="${done?'Mark not done':'Mark done'}">${done?'✓':''}</button>`
     : '<span style="width:22px; flex-shrink:0;"></span>';
+  const noteCount = itemNotesFor(idx, entry.key).length;
   return `<li class="${done?'done':''}" data-key="${entry.key}" data-day="${idx}">
     ${checkbox}${media} <span class="li-text">${escapeHtml(entry.label)}</span> ${entry.priceStr?`<span class="price">${escapeHtml(entry.priceStr)}</span>`:''}
+    <button class="item-note-btn ${noteCount?'has-notes':''}" data-day="${idx}" data-key="${entry.key}" data-name="${escapeHtml(entry.label)}" title="Notes on this item">📝${noteCount?`<span class="note-count">${noteCount}</span>`:''}</button>
     <span class="reorder-btns">
       <button class="li-move" data-dir="up" ${isFirst?'disabled':''} title="Move up">▲</button>
       <button class="li-move" data-dir="down" ${isLast?'disabled':''} title="Move down">▼</button>
@@ -1637,6 +1649,72 @@ function dayNotesHtml(idx){
       <button class="note-remove" data-day="${idx}" data-id="${n.id}" title="Delete note">✕</button>
     </div>
   `).join('');
+}
+
+// Per-item notes — same authored-list idea as day notes, but scoped to one
+// specific plan item within a day (keyed by that item's stable list key).
+function itemNotesFor(dayIdx, key){
+  return (sharedState.itemNotes && sharedState.itemNotes[dayIdx] && sharedState.itemNotes[dayIdx][key]) || [];
+}
+
+function showItemNotes(dayIdx, key, itemName){
+  const overlay = document.createElement('div');
+  overlay.className = 'surprise-overlay';
+
+  function render(){
+    const notes = itemNotesFor(dayIdx, key);
+    const notesHtml = notes.length ? notes.map(n=>`
+      <div class="note-row">
+        <div class="note-meta">${n.author?`<b>${escapeHtml(n.author)}</b>`:'<b>Note</b>'} ${n.ts?`<span class="note-time">${relativeTime(n.ts)}</span>`:''}</div>
+        <div class="note-text">${escapeHtml(n.text)}</div>
+        <button class="note-remove" data-id="${n.id}" title="Delete note">✕</button>
+      </div>
+    `).join('') : '<div class="day-notes-empty">No notes yet.</div>';
+
+    overlay.innerHTML = `
+      <div class="form-card">
+        <h3>Notes — ${escapeHtml(itemName)}</h3>
+        <div class="day-notes-list">${notesHtml}</div>
+        <div class="day-notes-add">
+          <input type="text" id="itemNoteInput" placeholder="Add a note about this...">
+          <button class="day-notes-add-btn" id="itemNoteAddBtn">Add</button>
+        </div>
+        <div class="form-actions">
+          <button class="btn-cancel" id="itemNoteClose">Close</button>
+        </div>
+      </div>`;
+
+    overlay.querySelector('#itemNoteClose').addEventListener('click', ()=> overlay.remove());
+    overlay.querySelectorAll('.note-remove').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        sharedState.itemNotes[dayIdx][key] = sharedState.itemNotes[dayIdx][key].filter(n=>n.id!==btn.dataset.id);
+        saveState();
+        render();
+        renderItinerary();
+      });
+    });
+    const addBtn = overlay.querySelector('#itemNoteAddBtn');
+    const input = overlay.querySelector('#itemNoteInput');
+    const doAdd = ()=>{
+      const text = input.value.trim();
+      if(!text) return;
+      const name = ensureUserName();
+      if(!name) return;
+      if(!sharedState.itemNotes) sharedState.itemNotes = {};
+      if(!sharedState.itemNotes[dayIdx]) sharedState.itemNotes[dayIdx] = {};
+      if(!sharedState.itemNotes[dayIdx][key]) sharedState.itemNotes[dayIdx][key] = [];
+      sharedState.itemNotes[dayIdx][key].push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), author:name, text, ts:Date.now() });
+      saveState();
+      render();
+      renderItinerary();
+    };
+    addBtn.addEventListener('click', doAdd);
+    input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); doAdd(); } });
+  }
+
+  render();
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
 }
 
 function connectorHtml(day){
@@ -1778,6 +1856,12 @@ function renderItinerary(){
     btn.addEventListener('click', e=>{
       e.stopPropagation();
       showDayPicker(parseInt(btn.dataset.day, 10));
+    });
+  });
+  wrap.querySelectorAll('.item-note-btn').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      showItemNotes(parseInt(btn.dataset.day, 10), btn.dataset.key, btn.dataset.name);
     });
   });
   function addNoteFromInput(idx){
@@ -2843,7 +2927,7 @@ function connectToTrip(){
     setSync('local');
     const cached = localStorage.getItem(LOCAL_KEY);
     if(cached){
-      try{ sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], budgetTotal:4000, packing:null}, JSON.parse(cached)); }catch(e){}
+      try{ sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], itemNotes:{}, budgetTotal:4000, packing:null}, JSON.parse(cached)); }catch(e){}
     }
     hasLoadedRemoteState = true;
     renderAll();
@@ -2858,12 +2942,12 @@ function connectToTrip(){
 
   unsubscribeTrip = tripDoc().onSnapshot(doc=>{
     if(doc.exists){
-      sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], budgetTotal:4000, packing:null}, doc.data());
+      sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], itemNotes:{}, budgetTotal:4000, packing:null}, doc.data());
       hasLoadedRemoteState = true;
     } else if(!hasLoadedRemoteState){
       // Only true the very first time this trip code is ever used — never
       // re-initialize over data that already exists.
-      sharedState = {expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], budgetTotal:4000, packing:null};
+      sharedState = {expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], itemNotes:{}, budgetTotal:4000, packing:null};
       hasLoadedRemoteState = true;
       tripDoc().set(sharedState);
     }
