@@ -31,7 +31,7 @@
   --jade:#3FBF8F;
   --line:#2A2731;
 }
-*{box-sizing:border-box;}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 html{scroll-behavior:smooth;}
 body{
   margin:0;
@@ -121,14 +121,12 @@ nav.tabs{
 }
 .tab-btn .tab-icon{font-size:14px; line-height:1;}
 .tab-btn.active{background:var(--red); border-color:var(--red); color:#100404; font-weight:600;}
-.tab-btn:hover:not(.active){border-color:var(--amber); color:var(--amber);}
 .currency-toggle{
   position:absolute; top:14px; right:16px; z-index:5;
   background:rgba(10,10,13,0.55); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,0.2); color:var(--amber);
   font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:700;
   width:34px; height:34px; border-radius:50%; cursor:pointer; flex-shrink:0;
 }
-.currency-toggle:hover{border-color:var(--amber);}
 
 /* Bottom, native-app-style tab bar on mobile */
 @media (max-width:680px){
@@ -195,7 +193,6 @@ nav.tabs{
 }
 .pack-assign.set{background:rgba(244,166,61,0.12); border-color:var(--amber); color:var(--amber);}
 .pack-remove{background:none; border:none; color:var(--dim); cursor:pointer; font-size:14px;}
-.pack-remove:hover{color:var(--red);}
 
 main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
 .panel{display:none;}
@@ -265,7 +262,6 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
   position:absolute; top:8px; right:8px; background:none; border:none; color:var(--dim);
   cursor:pointer; font-size:12px;
 }
-.note-remove:hover{color:var(--red);}
 .day-notes-add{display:flex; gap:8px;}
 .day-notes-input{
   flex:1; min-width:0; background:var(--bg); border:1px solid var(--line); color:var(--paper);
@@ -366,7 +362,6 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
   font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--paper); border:1px solid var(--line);
   border-radius:6px; padding:6px 10px; text-decoration:none; white-space:nowrap;
 }
-.booking-row .b-cal:hover{border-color:var(--amber); color:var(--amber);}
 .booking-row.is-booked{opacity:0.7;}
 .booked-check{
   width:22px; height:22px; border-radius:6px; border:1px solid var(--line); background:transparent;
@@ -381,7 +376,6 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
   color:var(--paper); font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.05em;
   text-transform:uppercase; cursor:pointer;
 }
-.add-place-btn:hover{border-color:var(--amber); color:var(--amber);}
 .view-tabs{display:flex; gap:8px; margin-bottom:14px;}
 .view-tab-btn{
   flex:1; background:var(--bg2); border:1px solid var(--line); color:var(--dim);
@@ -389,7 +383,6 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
   padding:9px 8px; border-radius:8px; cursor:pointer;
 }
 .view-tab-btn.active{background:var(--jade); border-color:var(--jade); color:#062016; font-weight:600;}
-.view-tab-btn:hover:not(.active){border-color:var(--amber); color:var(--amber);}
 
 /* Card action icons for custom status controls */
 .card-actions.three{display:grid; grid-template-columns:1fr auto auto;}
@@ -397,9 +390,7 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
   border:1px solid var(--line); background:transparent; color:var(--dim); border-radius:6px;
   padding:8px 10px; cursor:pointer; font-size:13px;
 }
-.icon-btn:hover{border-color:var(--amber); color:var(--amber);}
 .icon-btn.complete.checked{background:var(--jade); border-color:var(--jade); color:#062016;}
-.icon-btn.archive:hover{border-color:var(--red); color:var(--red);}
 .icon-btn.restore{border-color:var(--jade); color:var(--jade);}
 
 /* Add-place form modal (reuses the surprise-overlay backdrop pattern) */
@@ -440,7 +431,6 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
   color:#fff; font-family:'Anton',sans-serif; font-size:15px; letter-spacing:0.03em; text-transform:uppercase;
   cursor:pointer; box-shadow:0 0 22px rgba(255,75,62,0.25);
 }
-.surprise-btn:hover{filter:brightness(1.08);}
 .surprise-overlay{
   position:fixed; inset:0; background:rgba(6,6,8,0.8); backdrop-filter:blur(3px);
   display:flex; align-items:center; justify-content:center; z-index:100; padding:20px;
@@ -483,7 +473,6 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
   border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--bg2);
   transition:box-shadow .2s, border-color .2s, transform .2s;
 }
-.card:hover{border-color:var(--amber); box-shadow:0 0 30px rgba(244,166,61,0.2); transform:translateY(-2px);}
 .card .media{position:relative; height:150px; background:linear-gradient(90deg, var(--bg3) 25%, #241f2c 37%, var(--bg3) 63%); background-size:400% 100%; animation:shimmer 1.6s ease infinite;}
 .card .media img{width:100%; height:100%; object-fit:cover; display:block; font-size:0; color:transparent; opacity:0; transition:opacity .4s ease;}
 .card .media .media-fade{position:absolute; inset:0; background:linear-gradient(180deg, transparent 40%, rgba(10,10,13,0.85) 100%);}
@@ -501,7 +490,6 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
   text-transform:uppercase; color:var(--paper); border:1px solid var(--line); border-radius:6px;
   padding:8px 6px; text-decoration:none;
 }
-.map-link:hover{border-color:var(--amber); color:var(--amber);}
 .done-btn{
   border:1px solid var(--line); background:transparent; color:var(--dim); border-radius:6px;
   padding:8px 12px; cursor:pointer; font-size:14px;
@@ -518,7 +506,6 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
   padding:4px 11px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.05em;
   text-transform:uppercase; cursor:pointer;
 }
-.edit-budget-btn:hover{border-color:var(--amber); color:var(--amber);}
 .budget-hero-amount{font-size:34px; color:var(--paper); margin-bottom:14px;}
 .budget-bar-track{height:10px; border-radius:20px; background:var(--bg3); overflow:hidden; margin-bottom:12px;}
 .budget-bar-fill{height:100%; border-radius:20px; background:linear-gradient(90deg, var(--jade), var(--amber)); width:0%; transition:width .4s ease, background .3s;}
@@ -577,9 +564,7 @@ form.expense-form button{
 .ledger-row .l-cat{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--dim); text-transform:uppercase; letter-spacing:0.04em; flex-shrink:0;}
 .ledger-row .l-amt{font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600; flex-shrink:0; min-width:70px; text-align:right;}
 .edit-btn{background:none; border:none; color:var(--dim); cursor:pointer; font-size:13px; flex-shrink:0;}
-.edit-btn:hover{color:var(--amber);}
 .del-btn{background:none; border:none; color:var(--dim); cursor:pointer; font-size:14px; flex-shrink:0;}
-.del-btn:hover{color:var(--red);}
 
 /* ===== Category breakdown ===== */
 .cat-breakdown{border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:18px; background:var(--bg2);}
@@ -590,6 +575,7 @@ form.expense-form button{
 .cat-bar-track{flex:1; height:8px; border-radius:20px; background:var(--bg3); overflow:hidden;}
 .cat-bar-fill{height:100%; border-radius:20px;}
 .cat-bar-amt{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--dim); width:64px; text-align:right; flex-shrink:0;}
+.day-breakdown-note{font-size:11px; color:var(--dim); margin-top:8px; font-style:italic;}
 .empty{color:var(--dim); font-size:13px; padding:20px 0; text-align:center;}
 .sync-pill{
   display:flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace;
@@ -601,7 +587,6 @@ form.expense-form button{
   font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.05em; text-transform:uppercase;
   padding:4px 10px; border-radius:20px; cursor:pointer;
 }
-.trip-code-btn:hover{border-color:var(--amber);}
 .sync-dot.off{background:var(--red);}
 
 footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:center;}
@@ -617,7 +602,6 @@ footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); fo
   box-shadow:0 6px 20px rgba(0,0,0,0.35);
 }
 .back-to-top.show{opacity:1; pointer-events:auto; transform:none;}
-.back-to-top:hover{border-color:var(--amber);}
 @media (max-width:680px){
   .back-to-top{bottom:96px; right:16px; width:42px; height:42px;}
 }
@@ -659,17 +643,14 @@ button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
 .li-move{
   background:none; border:none; color:var(--dim); cursor:pointer; font-size:9px; line-height:1; padding:2px 3px;
 }
-.li-move:hover:not(:disabled){color:var(--amber);}
 .li-move:disabled{opacity:0.2; cursor:default;}
 .plan-remove{background:none; border:none; color:var(--dim); cursor:pointer; font-size:13px; flex-shrink:0;}
-.plan-remove:hover{color:var(--red);}
 .add-from-explore-btn{
   display:block; width:100%; margin-top:10px; padding:10px;
   background:transparent; border:1px dashed var(--line); border-radius:8px;
   color:var(--dim); font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.05em;
   text-transform:uppercase; cursor:pointer;
 }
-.add-from-explore-btn:hover{border-color:var(--amber); color:var(--amber);}
 
 /* Picker modal for adding an Explore item to a day */
 .picker-list{max-height:44vh; overflow-y:auto; margin:14px 0;}
@@ -677,7 +658,6 @@ button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
   display:flex; align-items:center; gap:10px; padding:9px 8px; border-radius:8px; cursor:pointer;
   border-bottom:1px solid var(--line);
 }
-.picker-row:hover{background:var(--bg3);}
 .picker-row img{width:34px; height:34px; border-radius:6px; object-fit:cover; flex-shrink:0; background:var(--bg3);}
 .picker-row .pr-name{flex:1; font-size:13.5px;}
 .picker-row .pr-city{font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--dim);}
@@ -694,6 +674,32 @@ button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
 .jump-Kyoto{color:var(--jade); border-color:var(--jade);}
 .section-count{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--dim); margin-left:8px;}
 
+
+/* Hover effects only for devices that actually have a mouse — prevents
+   stuck/ghost highlight states on touch after the list re-renders. */
+@media (hover: hover) and (pointer: fine) {
+  .booking-row .b-cal:hover{border-color:var(--amber); color:var(--amber);}
+  .tab-btn:hover:not(.active){border-color:var(--amber); color:var(--amber);}
+  .currency-toggle:hover{border-color:var(--amber);}
+  .pack-remove:hover{color:var(--red);}
+  .note-remove:hover{color:var(--red);}
+  .add-place-btn:hover{border-color:var(--amber); color:var(--amber);}
+  .view-tab-btn:hover:not(.active){border-color:var(--amber); color:var(--amber);}
+  .icon-btn:hover{border-color:var(--amber); color:var(--amber);}
+  .icon-btn.archive:hover{border-color:var(--red); color:var(--red);}
+  .surprise-btn:hover{filter:brightness(1.08);}
+  .card:hover{border-color:var(--amber); box-shadow:0 0 30px rgba(244,166,61,0.2); transform:translateY(-2px);}
+  .map-link:hover{border-color:var(--amber); color:var(--amber);}
+  .edit-budget-btn:hover{border-color:var(--amber); color:var(--amber);}
+  .edit-btn:hover{color:var(--amber);}
+  .del-btn:hover{color:var(--red);}
+  .trip-code-btn:hover{border-color:var(--amber);}
+  .back-to-top:hover{border-color:var(--amber);}
+  .li-move:hover:not(:disabled){color:var(--amber);}
+  .plan-remove:hover{color:var(--red);}
+  .add-from-explore-btn:hover{border-color:var(--amber); color:var(--amber);}
+  .picker-row:hover{background:var(--bg3);}
+}
 </style>
 </head>
 <body>
@@ -824,6 +830,7 @@ button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
     </div>
 
     <div id="categoryBreakdown"></div>
+    <div id="dayBreakdown"></div>
 
     <div class="est-box">
       <div class="sec-title">Planned / booking costs (reference)</div>
@@ -836,6 +843,7 @@ button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
       <div><label>Category</label>
         <select id="expCategory"><option>Food</option><option>Lodging</option><option>Transit</option><option>Activities</option><option>Shopping</option><option>Bar/Night</option><option>Other</option></select>
       </div>
+      <div><label>Date spent</label><input type="date" id="expDate"></div>
       <button type="submit">Add</button>
     </form>
 
@@ -2375,6 +2383,32 @@ function renderBudget(){
     breakdown.innerHTML = `<div class="cat-breakdown"><div class="sec-title">By category</div>${rows}</div>`;
   }
 
+  // By day — grouped by the date the money was actually spent
+  const dayBreakdown = document.getElementById('dayBreakdown');
+  const datedExpenses = expenses.filter(e=>e.spentDate || e.ts);
+  if(datedExpenses.length === 0){
+    dayBreakdown.innerHTML = '';
+  } else {
+    const byDay = {};
+    datedExpenses.forEach(e=>{
+      const key = e.spentDate || new Date(e.ts).toISOString().slice(0,10);
+      byDay[key] = (byDay[key]||0) + e.amount;
+    });
+    const maxDay = Math.max(...Object.values(byDay));
+    const dayRows = Object.entries(byDay).sort((a,b)=> a[0].localeCompare(b[0])).map(([key, amt])=>{
+      const label = new Date(key + 'T00:00:00').toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'});
+      const dayPct = maxDay > 0 ? Math.round((amt/maxDay)*100) : 0;
+      return `
+        <div class="cat-bar-row">
+          <span class="cat-name">${escapeHtml(label)}</span>
+          <span class="cat-bar-track"><span class="cat-bar-fill" style="width:${dayPct}%; background:var(--amber);"></span></span>
+          <span class="cat-bar-amt">${fmtCur(amt)}</span>
+        </div>`;
+    }).join('');
+    const undatedCount = expenses.length - datedExpenses.length;
+    dayBreakdown.innerHTML = `<div class="cat-breakdown"><div class="sec-title">By day</div>${dayRows}${undatedCount ? `<div class="day-breakdown-note">${undatedCount} expense${undatedCount===1?'':'s'} logged before this feature — not dated</div>`:''}</div>`;
+  }
+
   // Ledger
   const body = document.getElementById('ledgerBody');
   const emptyMsg = document.getElementById('ledgerEmpty');
@@ -2418,6 +2452,7 @@ function showEditExpense(idx){
   const exp = sharedState.expenses[idx];
   if(!exp) return;
   const cats = ['Food','Lodging','Transit','Activities','Shopping','Bar/Night','Other'];
+  const currentDate = exp.spentDate || (exp.ts ? new Date(exp.ts).toISOString().slice(0,10) : new Date().toISOString().slice(0,10));
   const overlay = document.createElement('div');
   overlay.className = 'surprise-overlay';
   overlay.innerHTML = `
@@ -2435,6 +2470,8 @@ function showEditExpense(idx){
           <select id="edCategory">${cats.map(c=>`<option ${c===exp.category?'selected':''}>${c}</option>`).join('')}</select>
         </div>
       </div>
+      <label>Date spent</label>
+      <input type="date" id="edDate" value="${currentDate}">
       <div class="form-actions">
         <button class="btn-cancel" id="edCancel">Cancel</button>
         <button class="btn-save" id="edSave">Save</button>
@@ -2447,8 +2484,9 @@ function showEditExpense(idx){
     const desc = overlay.querySelector('#edDesc').value.trim();
     const amount = parseFloat(overlay.querySelector('#edAmount').value);
     const category = overlay.querySelector('#edCategory').value;
+    const spentDate = overlay.querySelector('#edDate').value || currentDate;
     if(!desc || isNaN(amount)) return;
-    sharedState.expenses[idx] = { desc, amount, category, ts: exp.ts || Date.now() };
+    sharedState.expenses[idx] = { desc, amount, category, ts: exp.ts || Date.now(), spentDate };
     saveState();
     overlay.remove();
     renderBudget();
@@ -2595,14 +2633,17 @@ document.getElementById('expenseForm').addEventListener('submit', (e)=>{
   const desc = document.getElementById('expDesc').value.trim();
   const amount = parseFloat(document.getElementById('expAmount').value);
   const category = document.getElementById('expCategory').value;
+  const spentDate = document.getElementById('expDate').value || new Date().toISOString().slice(0,10);
   if(!desc || isNaN(amount)) return;
   if(!sharedState.expenses) sharedState.expenses = [];
-  sharedState.expenses.push({ desc, amount, category, ts: Date.now() });
+  sharedState.expenses.push({ desc, amount, category, ts: Date.now(), spentDate });
   saveState();
   renderBudget();
   e.target.reset();
+  document.getElementById('expDate').value = new Date().toISOString().slice(0,10);
   document.getElementById('expDesc').focus();
 });
+document.getElementById('expDate').value = new Date().toISOString().slice(0,10);
 
 /* ---------- Init ---------- */
 renderItinerary();
