@@ -2819,10 +2819,15 @@ function setSync(status){
 }
 
 let unsubscribeTrip = null;
+let hasLoadedRemoteState = false; // never save until we've confirmed what's actually there
 
 function saveState(){
   if(firebaseReady && getTripCode()){
-    tripDoc().set(sharedState, {merge:false}).catch(e=>console.error('save failed', e));
+    if(!hasLoadedRemoteState){
+      console.warn('Skipped save — still waiting on the real synced data to load, to avoid overwriting it.');
+      return;
+    }
+    tripDoc().set(sharedState, {merge:true}).catch(e=>console.error('save failed', e));
   } else {
     localStorage.setItem(LOCAL_KEY, JSON.stringify(sharedState));
   }
@@ -2830,6 +2835,7 @@ function saveState(){
 
 function connectToTrip(){
   if(unsubscribeTrip){ unsubscribeTrip(); unsubscribeTrip = null; }
+  hasLoadedRemoteState = false;
   const code = getTripCode();
 
   if(!firebaseReady){
@@ -2838,6 +2844,7 @@ function connectToTrip(){
     if(cached){
       try{ sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], budgetTotal:4000, packing:null}, JSON.parse(cached)); }catch(e){}
     }
+    hasLoadedRemoteState = true;
     renderAll();
     return;
   }
@@ -2851,8 +2858,12 @@ function connectToTrip(){
   unsubscribeTrip = tripDoc().onSnapshot(doc=>{
     if(doc.exists){
       sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], budgetTotal:4000, packing:null}, doc.data());
-    } else {
+      hasLoadedRemoteState = true;
+    } else if(!hasLoadedRemoteState){
+      // Only true the very first time this trip code is ever used — never
+      // re-initialize over data that already exists.
       sharedState = {expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], budgetTotal:4000, packing:null};
+      hasLoadedRemoteState = true;
       tripDoc().set(sharedState);
     }
     setSync(navigator.onLine ? 'live' : 'offline');
