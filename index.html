@@ -571,7 +571,9 @@ form.expense-form button{
   border-radius:8px; margin-bottom:8px; background:var(--bg2);
 }
 .ledger-row .cat-dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
-.ledger-row .l-desc{font-weight:600; font-size:14px; flex:1; min-width:0;}
+.l-desc-wrap{flex:1; min-width:0; display:flex; flex-direction:column;}
+.ledger-row .l-desc{font-weight:600; font-size:14px;}
+.ledger-row .l-time{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--dim); margin-top:1px;}
 .ledger-row .l-cat{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--dim); text-transform:uppercase; letter-spacing:0.04em; flex-shrink:0;}
 .ledger-row .l-amt{font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600; flex-shrink:0; min-width:70px; text-align:right;}
 .edit-btn{background:none; border:none; color:var(--dim); cursor:pointer; font-size:13px; flex-shrink:0;}
@@ -2387,7 +2389,10 @@ function renderBudget(){
       return `
         <div class="ledger-row">
           <span class="cat-dot" style="background:${color};"></span>
-          <span class="l-desc">${escapeHtml(exp.desc)}</span>
+          <div class="l-desc-wrap">
+            <span class="l-desc">${escapeHtml(exp.desc)}</span>
+            ${exp.ts?`<span class="l-time">${relativeTime(exp.ts)}</span>`:''}
+          </div>
           <span class="l-cat">${escapeHtml(exp.category)}</span>
           <span class="l-amt">${fmtCur(exp.amount)}</span>
           <button class="edit-btn" data-idx="${realIdx}" title="Edit">✎</button>
@@ -2443,7 +2448,7 @@ function showEditExpense(idx){
     const amount = parseFloat(overlay.querySelector('#edAmount').value);
     const category = overlay.querySelector('#edCategory').value;
     if(!desc || isNaN(amount)) return;
-    sharedState.expenses[idx] = { desc, amount, category };
+    sharedState.expenses[idx] = { desc, amount, category, ts: exp.ts || Date.now() };
     saveState();
     overlay.remove();
     renderBudget();
@@ -2592,7 +2597,7 @@ document.getElementById('expenseForm').addEventListener('submit', (e)=>{
   const category = document.getElementById('expCategory').value;
   if(!desc || isNaN(amount)) return;
   if(!sharedState.expenses) sharedState.expenses = [];
-  sharedState.expenses.push({ desc, amount, category });
+  sharedState.expenses.push({ desc, amount, category, ts: Date.now() });
   saveState();
   renderBudget();
   e.target.reset();
