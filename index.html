@@ -330,6 +330,23 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
 .phrase-card .p-romaji{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--amber); margin-bottom:4px;}
 .phrase-card .p-en{font-size:13px; color:var(--paper);}
 .phrase-card .p-note{font-size:11.5px; color:var(--dim); margin-top:4px; font-style:italic;}
+.practice-toggle-btn{
+  display:block; width:100%; margin:2px 0 14px; padding:11px;
+  background:var(--bg2); border:1px solid var(--line); border-radius:8px;
+  color:var(--dim); font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:0.04em;
+  text-transform:uppercase; cursor:pointer;
+}
+.practice-toggle-btn.on{background:rgba(63,191,143,0.12); border-color:var(--jade); color:var(--jade);}
+.phrase-card.practice{cursor:pointer;}
+.phrase-card.practice .p-en, .phrase-card.practice .p-note{
+  filter:blur(5px); user-select:none; transition:filter .15s ease;
+}
+.phrase-card.practice.revealed .p-en, .phrase-card.practice.revealed .p-note{filter:none;}
+.phrase-card.practice .p-tap-hint{
+  font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--dim); text-transform:uppercase;
+  letter-spacing:0.05em; margin-top:4px;
+}
+.phrase-card.practice.revealed .p-tap-hint{display:none;}
 .tip-row{
   display:flex; gap:12px; align-items:flex-start; border:1px solid var(--line); border-radius:10px;
   padding:12px 16px; margin-bottom:8px; background:var(--bg2);
@@ -371,6 +388,7 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
 .b-edit, .b-delete{
   background:none; border:none; color:var(--dim); cursor:pointer; font-size:13px; flex-shrink:0;
 }
+.b-clickable{cursor:pointer;}
 
 /* ===== Explore ===== */
 .add-place-btn{
@@ -696,6 +714,7 @@ button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
 /* Hover effects only for devices that actually have a mouse — prevents
    stuck/ghost highlight states on touch after the list re-renders. */
 @media (hover: hover) and (pointer: fine) {
+  .b-clickable:hover{text-decoration:underline;}
   .card-edit-btn:hover{border-color:var(--amber); color:var(--amber);}
   .b-edit:hover{color:var(--amber);}
   .b-delete:hover{color:var(--red);}
@@ -877,9 +896,12 @@ button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
   <!-- GUIDE -->
   <section class="panel" id="panel-guide">
     <div class="sec-title">Phrasebook & train tips</div>
-    <div class="sec-sub">Quick reference for getting around and getting by.</div>
+    <div class="sec-sub">Quick reference for getting around and getting by — and something to actually study before the trip.</div>
 
     <div class="sec-title" style="font-size:15px; margin-top:4px;">Useful phrases</div>
+    <input type="text" class="search-input" id="phraseSearch" placeholder="Search a phrase or meaning...">
+    <div class="filter-row" id="phraseCatFilters"></div>
+    <button class="practice-toggle-btn" id="practiceToggleBtn">🧠 Practice mode: Off</button>
     <div class="phrase-list" id="phraseList"></div>
 
     <div class="sec-title" style="font-size:15px; margin-top:26px;">Riding the trains</div>
@@ -1071,7 +1093,7 @@ const ACTIVITIES = [
 {id:'cup-noodles', name:'Cup Noodles Museum', city:'Tokyo', category:'activity'},
 
 // --- TOKYO: bar/nightlife ---
-{id:'bar-centifolia', name:'Bar Centifolia', city:'Tokyo', category:'bar', notes:'Viral fancy bar — book 15 days ahead for a table, or walk up at open (~2am JST) for bar seating.', bookBy:'Book by Nov 15 (15 days before your Nov 30 visit), booking window opens midnight JST'},
+{id:'bar-centifolia', name:'Bar Centifolia', city:'Tokyo', category:'bar', notes:'Viral fancy bar — book 15 days ahead for a table, or walk up at open (~2am JST) for bar seating.', bookBy:'Book by Nov 15 (15 days before your Nov 30 visit), booking window opens midnight JST', url:'https://www.tablecheck.com/en/shops/bar-centifolia/reserve'},
 {id:'karaoke-kyobashi', name:'カラオケBar京橋秘密倶楽部 (Karaoke Bar)', city:'Tokyo', category:'bar'},
 {id:'music-bar-bounce', name:'MUSIC BAR BOUNCE', city:'Tokyo', category:'bar'},
 {id:'a10-jazz', name:'A10 (vinyl jazz bar)', city:'Tokyo', category:'bar'},
@@ -1085,13 +1107,13 @@ const ACTIVITIES = [
 {id:'jdm-meet', name:'Tokyo Drift — Daikoku Parking Area (JDM car meet)', city:'Tokyo', category:'activity', price:'$150 pp', bookBy:'Book by Nov 1'},
 
 // --- TOKYO: activity ---
-{id:'teamlab-planets', name:'teamLab Planets TOKYO DMM', city:'Tokyo', category:'activity', price:'$23 pp', bookBy:'Book from Sept 1'},
+{id:'teamlab-planets', name:'teamLab Planets TOKYO DMM', city:'Tokyo', category:'activity', price:'$23 pp', bookBy:'Book from Sept 1', url:'https://teamlabplanets.dmm.com/en'},
 {id:'shibuya-sky', name:'Shibuya Sky', city:'Tokyo', category:'activity'},
-{id:'asakusa-sumo', name:'Asakusa Sumo Club', city:'Tokyo', category:'activity', price:'$102 pp', bookBy:'Book by Nov 6'},
+{id:'asakusa-sumo', name:'Asakusa Sumo Club', city:'Tokyo', category:'activity', price:'$102 pp', bookBy:'Book by Nov 6', url:'https://asakusa-sumo.com/reserve/'},
 {id:'dawn-robot-cafe', name:'DAWN | Avatar Robot Cafe ver.β', city:'Tokyo', category:'activity'},
-{id:'tokyo-disney', name:'Tokyo Disneyland', city:'Tokyo', category:'activity'},
+{id:'tokyo-disney', name:'Tokyo Disneyland', city:'Tokyo', category:'activity', url:'https://www.tokyodisneyresort.jp/en/ticket/index.html'},
 {id:'tsukiji', name:'Tsukiji Outer Market', city:'Tokyo', category:'food', notes:'Travel-day food crawl'},
-{id:'ghibli-museum', name:'Ghibli Museum', city:'Tokyo', category:'activity'},
+{id:'ghibli-museum', name:'Ghibli Museum', city:'Tokyo', category:'activity', url:'https://www.ghibli-museum.jp/en/tickets'},
 {id:'mannen-yu', name:'Mannen-yu (Onsen)', city:'Tokyo', category:'activity'},
 {id:'hasunuma-onsen', name:'Hasunuma Onsen', city:'Tokyo', category:'activity'},
 {id:'todoroki-ravine', name:'Todoroki Ravine Park', city:'Tokyo', category:'activity'},
@@ -1103,7 +1125,7 @@ const ACTIVITIES = [
 {id:'yokohama-chinatown', name:'Yokohama Chinatown', city:'Tokyo', category:'food'},
 {id:'ikebukuro', name:'Ikebukuro (anime city)', city:'Tokyo', category:'shop'},
 {id:'yuri-cafe', name:'Yuri Cafe anchor (anime cafe)', city:'Tokyo', category:'food'},
-{id:'street-kart', name:'STREET KART Shibuya (Mario Kart)', city:'Tokyo', category:'activity', price:'$130', bookBy:'Book by Nov 1 on Klook'},
+{id:'street-kart', name:'STREET KART Shibuya (Mario Kart)', city:'Tokyo', category:'activity', price:'$130', bookBy:'Book by Nov 1 on Klook', url:'https://www.klook.com/en-US/activity/92804-street-go-kart-experience-shibuya/'},
 
 // --- TOKYO: shop ---
 {id:'akihabara', name:'Akihabara', city:'Tokyo', category:'shop', notes:'Anime & gaming district'},
@@ -1118,6 +1140,13 @@ const ACTIVITIES = [
 {id:'atelier-bigi', name:'Atelier Bigi', city:'Tokyo', category:'shop', notes:'Watches'},
 {id:'sports-depo', name:'Sports Depo Shinjuku Flagship Store', city:'Tokyo', category:'shop', notes:'Shoe shopping'},
 {id:'nakano-broadway', name:'Nakano Broadway', city:'Tokyo', category:'shop', notes:'Anime'},
+{id:'odoriba-vintage', name:'Odoriba Vintage', city:'Tokyo', category:'shop', notes:'Kōenji vintage shop'},
+{id:'boobytrap-koenji', name:'BoobyTrap ブービートラップ', city:'Tokyo', category:'shop', notes:'Kōenji vintage shop'},
+{id:'small-change-koenji', name:'Small Change Kōenji', city:'Tokyo', category:'shop', notes:'Kōenji vintage shop'},
+{id:'2nd-street-shinjuku', name:'2nd Street Shinjuku', city:'Tokyo', category:'shop', notes:'Resale shop'},
+{id:'2nd-street-reuse-shop', name:'2nd Street Reuse Shop', city:'Tokyo', category:'shop', notes:'Resale shop'},
+{id:'2nd-street-koenji', name:'2nd STREET Kōenji', city:'Tokyo', category:'shop', notes:'Resale shop'},
+{id:'under-900-koenji', name:'無人古着屋UNDER 900', city:'Tokyo', category:'shop', notes:'Unmanned Kōenji thrift shop, everything under ¥900'},
 
 // --- OSAKA ---
 {id:'amerikamura', name:'Amerikamura', city:'Osaka', category:'activity', notes:'Near the Airbnb'},
@@ -1126,9 +1155,9 @@ const ACTIVITIES = [
 {id:'dekasan-sando', name:'Dekasan三明治', city:'Osaka', category:'food', notes:'Egg sandwich breakfast'},
 {id:'osaka-castle', name:'Osaka Castle', city:'Osaka', category:'activity'},
 {id:'okonomiyaki-yukari', name:'Okonomiyaki Yukari (Sennichimae)', city:'Osaka', category:'food', notes:'Street food crawl'},
-{id:'osaka-aquarium', name:'Osaka Aquarium Kaiyukan', city:'Osaka', category:'activity', notes:'Closes 8pm'},
+{id:'osaka-aquarium', name:'Osaka Aquarium Kaiyukan', city:'Osaka', category:'activity', notes:'Closes 8pm', url:'https://pop.kaiyukan.com/language/eng/webtickets.html'},
 {id:'teamlab-botanical', name:'teamLab Botanical Garden Osaka', city:'Osaka', category:'activity'},
-{id:'universal-studios', name:'Universal Studios Japan', city:'Osaka', category:'activity', bookBy:'Book by Sept 3 (~3 months before your Dec 3 visit — express passes and popular rides sell out)'},
+{id:'universal-studios', name:'Universal Studios Japan', city:'Osaka', category:'activity', bookBy:'Book by Sept 3 (~3 months before your Dec 3 visit — express passes and popular rides sell out)', url:'https://www.usj.co.jp/web/en/us'},
 {id:'ghibli-park', name:'Ghibli Park', city:'Osaka', category:'activity'},
 {id:'ikoma-sanjo', name:'Ikoma Sanjo Amusement Park', city:'Osaka', category:'activity'},
 {id:'hozenji-yokocho', name:'Hozenji Yokocho', city:'Osaka', category:'bar'},
@@ -1140,7 +1169,7 @@ const ACTIVITIES = [
 
 // --- KYOTO ---
 {id:'fushimi-inari', name:'Fushimi Inari Taisha', city:'Kyoto', category:'activity', notes:'Torii gates — go early'},
-{id:'hozugawa-boat', name:'Hozugawa River Boat Ride', city:'Kyoto', category:'activity', price:'$39', bookBy:'Books open Sept 9, reserve 9am–3pm window'},
+{id:'hozugawa-boat', name:'Hozugawa River Boat Ride', city:'Kyoto', category:'activity', price:'$39', bookBy:'Books open Sept 9, reserve 9am–3pm window', url:'https://www.klook.com/en-US/activity/74947-kyoto-arashiyama-hozugawa-river-boat-ride/'},
 {id:'ito-okashi', name:'Ito Okashi', city:'Kyoto', category:'food', notes:'Breakfast'},
 {id:'uji', name:'Uji', city:'Kyoto', category:'photo'},
 {id:'ine', name:'Ine', city:'Kyoto', category:'photo'},
@@ -1155,12 +1184,12 @@ const ACTIVITIES = [
 {id:'makers-watch', name:"Maker's Watch Knot", city:'Kyoto', category:'shop'},
 {id:'ichiran-kyoto', name:'ICHIRAN Kyoto Karasuma', city:'Kyoto', category:'food', notes:'Ramen'},
 {id:'hayakawa-knife', name:'Hayakawa Hamonoten', city:'Kyoto', category:'shop', notes:'Locally-owned knife shop'},
-{id:'hikiniku', name:'Hikiniku to Come', city:'Kyoto', category:'food', notes:'Hamburger — reservation or walk up in AM', bookBy:'Reservations open Oct 4 (or walk up in the morning)'},
+{id:'hikiniku', name:'Hikiniku to Come', city:'Kyoto', category:'food', notes:'Hamburger — reservation or walk up in AM', bookBy:'Reservations open Oct 4 (or walk up in the morning)', url:'https://hikinikutocome.com/en/visit/kyoto/'},
 {id:'miyajima', name:'Miyajima', city:'Kyoto', category:'activity', notes:'Shrines & river views'},
 {id:'kiyomizu', name:'Kiyomizu-dera Temple', city:'Kyoto', category:'activity'},
 {id:'sannenzaka', name:'Sannenzaka', city:'Kyoto', category:'photo'},
 {id:'pontocho', name:'Pontocho', city:'Kyoto', category:'bar'},
-{id:'kimono-rental', name:'Kimono Rental', city:'Kyoto', category:'activity'},
+{id:'kimono-rental', name:'Kimono Rental', city:'Kyoto', category:'activity', notes:'Many vendors in Arashiyama/Kyoto — link below is one popular option, swap if you booked elsewhere', url:'https://www.klook.com/en-US/activity/142346-kyoto-arashiyama-kimono-yukata-makeup-photography-by-mocomoco/'},
 {id:'nakazakicho', name:'Nakazakichō Station', city:'Kyoto', category:'photo'},
 {id:'tenjinbashi', name:'Tenjin-bashi-suji', city:'Kyoto', category:'photo'},
 {id:'america-mura-kyoto', name:'America-mura', city:'Kyoto', category:'shop'},
@@ -1263,6 +1292,13 @@ const MANUAL_IMAGE_URLS = {
   'atelier-bigi': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlX0y02a1SyGCXZWLdWUlARbOcJWSHqYLy-cfelsv3nU9JBY0QaVZGXXwF&s=10',
   'sports-depo': 'https://cdn.taxfreeshops.jp/production/shop/900001263-1-2-1730359924.jpg',
   'nakano-broadway': 'https://media.cntraveler.com/photos/64e7984172f3f6f8f0a3574d/16:9/w_2560,c_limit/Things%20to%20do%20in%20Tokyo_Nakano%20Broadway-JGGWEJ.jpg',
+  'odoriba-vintage': 'https://cdn-ak.f.st-hatena.com/images/fotolife/k/kurakurakurarin1991/20220519/20220519223752.jpg',
+  'boobytrap-koenji': 'https://uploads.oppyfinder.com/ecw2ql1n25xpx83t5h5yxhgq91ak',
+  'small-change-koenji': 'https://uploads.oppyfinder.com/hw9lzsqwlaatnrqne6sufqvsutdw',
+  '2nd-street-shinjuku': 'https://d3fphkxyf5o5bm.cloudfront.net/image-resize/format=webp,w=1200/QwRY54Li1HMwD7oNfqZTik3WF7M3afoGNnmaU6Ijj3',
+  '2nd-street-reuse-shop': 'https://2ndstreet-sg.com/wp-content/themes/2ndstreet-sg/img/sp/about/shop_japan.png',
+  '2nd-street-koenji': 'https://www.japanrailclub.com/wp-content/uploads/2024/11/koenji_2ndstreet_dondon-1024x546.jpg',
+  'under-900-koenji': 'https://lh3.googleusercontent.com/places/ANJU3Du3r-Evl_2Lp3QAWRXZI3vPmRNd8olelmJRiyNYNumSkOqwJJOZtEZhzm6wHXUnLek5yd-H2QOoiY6_dClP62K2IGBX1zX-1VE=s1600-w640',
   'amerikamura': 'https://www.happyjappy.com/wp-content/uploads/osaka-Amerika-Mura-jpg.webp',
   'dotonbori': 'https://i0.wp.com/www.touristjapan.com/wp-content/uploads/2024/07/Dotonbori-1-scaled.jpg?fit=2560%2C1707&ssl=1',
   'round1-osaka': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSqpLOvIN1cChwlcE8_lWzmce7OTf-86IOtPA5IwoNMxT7LhoZCSmlYtDs&s=10',
@@ -1407,19 +1443,76 @@ const ESTIMATES = [
   {label:'Lodging total (est.)', amount:'$2,900–$3,200'},
 ];
 
+const PHRASE_CATEGORIES = {
+  basics:'Basics', restaurant:'Restaurant', directions:'Directions & Questions',
+  shopping:'Shopping', emergency:'Emergency', smalltalk:'Small Talk',
+};
+
 const PHRASES = [
-  {jp:'すみません', romaji:'Sumimasen', en:'Excuse me / Sorry', note:'The single most useful phrase in Japan — use it to get attention, apologize, or squeeze past someone.'},
-  {jp:'ありがとうございます', romaji:'Arigatou gozaimasu', en:'Thank you'},
-  {jp:'お願いします', romaji:'Onegaishimasu', en:'Please', note:'Use when handing something over or making a request'},
-  {jp:'これをください', romaji:'Kore wo kudasai', en:'This one, please', note:'Point at a menu item or product'},
-  {jp:'いくらですか', romaji:'Ikura desu ka', en:'How much is it?'},
-  {jp:'英語を話せますか', romaji:'Eigo wo hanasemasu ka', en:'Do you speak English?'},
-  {jp:'トイレはどこですか', romaji:'Toire wa doko desu ka', en:'Where is the bathroom?'},
-  {jp:'お会計お願いします', romaji:'Okaikei onegaishimasu', en:'Check, please'},
-  {jp:'乾杯', romaji:'Kanpai', en:'Cheers!'},
-  {jp:'美味しい', romaji:'Oishii', en:'Delicious'},
-  {jp:'大丈夫です', romaji:'Daijoubu desu', en:"I'm okay / No thank you", note:'Polite way to decline something'},
-  {jp:'助けてください', romaji:'Tasukete kudasai', en:'Please help me', note:'For actual emergencies'},
+  // Basics
+  {cat:'basics', jp:'おはようございます', romaji:'Ohayou gozaimasu', en:'Good morning'},
+  {cat:'basics', jp:'こんにちは', romaji:'Konnichiwa', en:'Hello / good afternoon'},
+  {cat:'basics', jp:'こんばんは', romaji:'Konbanwa', en:'Good evening'},
+  {cat:'basics', jp:'さようなら', romaji:'Sayounara', en:'Goodbye', note:'A bit formal/final — for a casual goodbye use じゃあね (Jaa ne)'},
+  {cat:'basics', jp:'すみません', romaji:'Sumimasen', en:'Excuse me / Sorry', note:'The single most useful phrase in Japan — use it to get attention, apologize, or squeeze past someone.'},
+  {cat:'basics', jp:'ありがとうございます', romaji:'Arigatou gozaimasu', en:'Thank you'},
+  {cat:'basics', jp:'どういたしまして', romaji:'Dou itashimashite', en:"You're welcome"},
+  {cat:'basics', jp:'はい', romaji:'Hai', en:'Yes'},
+  {cat:'basics', jp:'いいえ', romaji:'Iie', en:'No'},
+  {cat:'basics', jp:'お願いします', romaji:'Onegaishimasu', en:'Please', note:'Use when handing something over or making a request'},
+  {cat:'basics', jp:'大丈夫です', romaji:'Daijoubu desu', en:"I'm okay / No thank you", note:'Polite way to decline something'},
+  {cat:'basics', jp:'わかりません', romaji:'Wakarimasen', en:"I don't understand"},
+  {cat:'basics', jp:'日本語が話せません', romaji:'Nihongo ga hanasemasen', en:"I can't speak Japanese"},
+  {cat:'basics', jp:'英語を話せますか', romaji:'Eigo wo hanasemasu ka', en:'Do you speak English?'},
+
+  // Restaurant
+  {cat:'restaurant', jp:'メニューをください', romaji:'Menyuu wo kudasai', en:'Menu, please'},
+  {cat:'restaurant', jp:'おすすめは何ですか', romaji:'Osusume wa nan desu ka', en:'What do you recommend?'},
+  {cat:'restaurant', jp:'これをください', romaji:'Kore wo kudasai', en:'This one, please', note:'Point at a menu item or product'},
+  {cat:'restaurant', jp:'何人ですか', romaji:'Nan-nin desu ka', en:'How many people? (staff will ask this)', note:'Answer with your number, e.g. 二人です (Futari desu) = "two people"'},
+  {cat:'restaurant', jp:'お水をください', romaji:'Omizu wo kudasai', en:'Water, please'},
+  {cat:'restaurant', jp:'辛くしないでください', romaji:'Karaku shinaide kudasai', en:"Please don't make it spicy"},
+  {cat:'restaurant', jp:'アレルギーがあります', romaji:'Arerugii ga arimasu', en:'I have an allergy'},
+  {cat:'restaurant', jp:'とても美味しかったです', romaji:'Totemo oishikatta desu', en:'That was delicious', note:'Say this on the way out — staff really appreciate it'},
+  {cat:'restaurant', jp:'お会計お願いします', romaji:'Okaikei onegaishimasu', en:'Check, please'},
+  {cat:'restaurant', jp:'カードは使えますか', romaji:'Kaado wa tsukaemasu ka', en:'Can I pay by card?', note:'Small/local spots are often cash-only — worth asking before you sit down'},
+  {cat:'restaurant', jp:'別々に払えますか', romaji:'Betsubetsu ni haraemasu ka', en:'Can we pay separately?', note:'Many places prefer one bill per table — don\u2019t be surprised if the answer is no'},
+  {cat:'restaurant', jp:'乾杯', romaji:'Kanpai', en:'Cheers!'},
+  {cat:'restaurant', jp:'美味しい', romaji:'Oishii', en:'Delicious'},
+
+  // Directions & Questions
+  {cat:'directions', jp:'〜はどこですか', romaji:'~wa doko desu ka', en:'Where is ~?', note:'Swap in any word — 駅はどこですか = "where\'s the station?"'},
+  {cat:'directions', jp:'トイレはどこですか', romaji:'Toire wa doko desu ka', en:'Where is the bathroom?'},
+  {cat:'directions', jp:'駅はどこですか', romaji:'Eki wa doko desu ka', en:"Where's the station?"},
+  {cat:'directions', jp:'どうやって行きますか', romaji:'Dou yatte ikimasu ka', en:'How do I get there?'},
+  {cat:'directions', jp:'歩いて行けますか', romaji:'Aruite ikemasu ka', en:'Can I walk there?'},
+  {cat:'directions', jp:'これは何ですか', romaji:'Kore wa nan desu ka', en:'What is this?'},
+  {cat:'directions', jp:'いくらですか', romaji:'Ikura desu ka', en:'How much is it?'},
+  {cat:'directions', jp:'何時ですか', romaji:'Nanji desu ka', en:'What time is it?'},
+  {cat:'directions', jp:'何時に開きますか', romaji:'Nanji ni akimasu ka', en:'What time does it open?'},
+  {cat:'directions', jp:'写真を撮ってもいいですか', romaji:'Shashin wo tottemo ii desu ka', en:'Can I take a photo?', note:'Good habit at temples/shrines and of other people\u2019s shops or art'},
+  {cat:'directions', jp:'一緒に写真を撮ってもいいですか', romaji:'Issho ni shashin wo tottemo ii desu ka', en:'Can we take a photo together?', note:'For asking a stranger to take your photo, or to be in one'},
+
+  // Shopping
+  {cat:'shopping', jp:'試着できますか', romaji:'Shichaku dekimasu ka', en:'Can I try this on?'},
+  {cat:'shopping', jp:'他の色はありますか', romaji:'Hoka no iro wa arimasu ka', en:'Do you have other colors?'},
+  {cat:'shopping', jp:'これは免税になりますか', romaji:'Kore wa menzei ni narimasu ka', en:'Is this tax-free?', note:'Bring your passport — many stores offer duty-free for tourists over a minimum purchase'},
+  {cat:'shopping', jp:'袋は要りません', romaji:'Fukuro wa irimasen', en:"I don't need a bag"},
+  {cat:'shopping', jp:'いくらですか', romaji:'Ikura desu ka', en:'How much is it?'},
+
+  // Emergency
+  {cat:'emergency', jp:'助けてください', romaji:'Tasukete kudasai', en:'Please help me', note:'For actual emergencies'},
+  {cat:'emergency', jp:'気分が悪いです', romaji:'Kibun ga warui desu', en:'I feel sick'},
+  {cat:'emergency', jp:'病院はどこですか', romaji:'Byouin wa doko desu ka', en:"Where's the hospital?"},
+  {cat:'emergency', jp:'警察を呼んでください', romaji:'Keisatsu wo yonde kudasai', en:'Please call the police'},
+  {cat:'emergency', jp:'財布をなくしました', romaji:'Saifu wo nakushimashita', en:'I lost my wallet'},
+
+  // Small Talk
+  {cat:'smalltalk', jp:'お元気ですか', romaji:'Ogenki desu ka', en:'How are you?'},
+  {cat:'smalltalk', jp:'元気です', romaji:'Genki desu', en:"I'm doing well"},
+  {cat:'smalltalk', jp:'どこから来ましたか', romaji:'Doko kara kimashita ka', en:'Where are you from?', note:'A common question you might get asked'},
+  {cat:'smalltalk', jp:'アメリカから来ました', romaji:'Amerika kara kimashita', en:"I'm from America"},
+  {cat:'smalltalk', jp:'日本は初めてです', romaji:'Nihon wa hajimete desu', en:'This is my first time in Japan'},
 ];
 
 const TRAIN_TIPS = [
@@ -2328,15 +2421,50 @@ document.getElementById('surpriseBtn').addEventListener('click', showSurprise);
 
 /* ---------- Book tab ---------- */
 /* ---------- Guide tab ---------- */
+let activePhraseCat = 'all';
+let phraseSearchTerm = '';
+let practiceMode = false;
+
+function renderPhraseFilters(){
+  const cats = ['all', ...Object.keys(PHRASE_CATEGORIES)];
+  document.getElementById('phraseCatFilters').innerHTML = cats.map(c=>
+    `<button class="chip-btn ${c===activePhraseCat?'active':''}" data-cat="${c}">${c==='all'?'All':PHRASE_CATEGORIES[c]}</button>`
+  ).join('');
+  document.querySelectorAll('#phraseCatFilters .chip-btn').forEach(b=>b.addEventListener('click',()=>{
+    activePhraseCat = b.dataset.cat;
+    renderGuide();
+  }));
+}
+
 function renderGuide(){
-  document.getElementById('phraseList').innerHTML = PHRASES.map(p=>`
-    <div class="phrase-card">
+  renderPhraseFilters();
+
+  const term = phraseSearchTerm.toLowerCase();
+  const filtered = PHRASES.filter(p=>{
+    if(activePhraseCat!=='all' && p.cat!==activePhraseCat) return false;
+    if(term && !(p.jp.includes(term) || p.romaji.toLowerCase().includes(term) || p.en.toLowerCase().includes(term))) return false;
+    return true;
+  });
+
+  const toggleBtn = document.getElementById('practiceToggleBtn');
+  toggleBtn.textContent = `🧠 Practice mode: ${practiceMode ? 'On' : 'Off'}`;
+  toggleBtn.classList.toggle('on', practiceMode);
+
+  document.getElementById('phraseList').innerHTML = filtered.map(p=>`
+    <div class="phrase-card ${practiceMode?'practice':''}">
       <div class="p-jp">${escapeHtml(p.jp)}</div>
       <div class="p-romaji">${escapeHtml(p.romaji)}</div>
       <div class="p-en">${escapeHtml(p.en)}</div>
       ${p.note?`<div class="p-note">${escapeHtml(p.note)}</div>`:''}
+      ${practiceMode?'<div class="p-tap-hint">Tap to reveal</div>':''}
     </div>
-  `).join('');
+  `).join('') || '<div class="empty">No phrases match that search.</div>';
+
+  if(practiceMode){
+    document.querySelectorAll('.phrase-card.practice').forEach(card=>{
+      card.addEventListener('click', ()=> card.classList.toggle('revealed'));
+    });
+  }
 
   document.getElementById('trainTips').innerHTML = TRAIN_TIPS.map(t=>`
     <div class="tip-row">
@@ -2349,6 +2477,15 @@ function renderGuide(){
   `).join('');
 }
 
+document.getElementById('phraseSearch').addEventListener('input', e=>{
+  phraseSearchTerm = e.target.value;
+  renderGuide();
+});
+document.getElementById('practiceToggleBtn').addEventListener('click', ()=>{
+  practiceMode = !practiceMode;
+  renderGuide();
+});
+
 function getBooked(id){ return !!(sharedState.bookedIds && sharedState.bookedIds[id]); }
 function setBooked(id, val){
   if(!sharedState.bookedIds) sharedState.bookedIds = {};
@@ -2359,26 +2496,34 @@ function setBooked(id, val){
 
 function getBookByDate(a){
   const override = sharedState.bookByOverrides && sharedState.bookByOverrides[a.id];
-  if(override) return new Date(override + 'T00:00:00');
+  if(override && override.date) return new Date(override.date + 'T00:00:00');
   return parseBookByDate(a.bookBy);
 }
 function isoFromDate(d){ return d ? d.toISOString().slice(0,10) : ''; }
 
 // Unified list: built-in dated activities (with any date override applied)
 // plus any custom reservations you've added — always re-sorted soonest-first.
+// Every built-in activity that either has a parseable bookBy date OR has
+// been given a date override is a "dated" booking — this makes the split
+// dynamic: giving a no-fixed-date item a date via edit moves it over.
 function getAllBookings(){
-  const built = ACTIVITIES.filter(a=>a.bookBy && !NO_DEADLINE_IDS.includes(a.id)).map(a=>{
+  const built = ACTIVITIES.filter(a=>{
+    const date = getBookByDate(a);
+    return !!date;
+  }).map(a=>{
     const override = sharedState.bookByOverrides && sharedState.bookByOverrides[a.id];
     return {
       id: a.id, name: a.name, city: a.city, custom: false,
       date: getBookByDate(a),
-      meta: override ? null : a.bookBy,
+      meta: (override && override.date) ? null : a.bookBy,
+      url: (override && override.url) || a.url,
     };
   });
   const custom = (sharedState.customBookings || []).map(cb=>({
     id: cb.id, name: cb.name, city: cb.city, custom: true,
     date: cb.date ? new Date(cb.date + 'T00:00:00') : null,
     meta: cb.notes || null,
+    url: cb.url,
   }));
   return built.concat(custom).sort((x,y)=>{
     if(!x.date && !y.date) return 0;
@@ -2410,7 +2555,6 @@ function renderBookings(){
   const all = getAllBookings();
 
   document.getElementById('bookingList').innerHTML = all.map(item=>{
-    const cal = bookingCalUrl(item);
     const booked = getBooked(item.id);
     let daysBadge = '';
     if(item.date && !booked){
@@ -2422,47 +2566,55 @@ function renderBookings(){
     return `
       <div class="booking-row ${booked?'is-booked':''}">
         <button class="booked-check ${booked?'done':''}" data-id="${item.id}" title="${booked?'Mark not booked':'Mark booked'}">${booked?'✓':''}</button>
-        <span class="b-name">${escapeHtml(item.name)} <span style="color:var(--dim); font-weight:400;">— ${item.city}</span></span>
+        <span class="b-name b-clickable" data-id="${item.id}" data-custom="${item.custom?'1':'0'}">${escapeHtml(item.name)} <span style="color:var(--dim); font-weight:400;">— ${item.city}</span></span>
         <span class="b-meta">${escapeHtml(metaText)}</span>
         ${daysBadge}
-        <button class="b-edit" data-id="${item.id}" data-custom="${item.custom?'1':'0'}" title="Edit date">✎</button>
-        ${cal?`<a class="b-cal" target="_blank" rel="noopener" href="${cal}">Add to calendar</a>`:''}
+        <button class="b-edit" data-id="${item.id}" data-custom="${item.custom?'1':'0'}" title="Edit">✎</button>
+        ${item.url?`<a class="b-cal" target="_blank" rel="noopener" href="${escapeHtml(item.url)}">Purchase</a>`:''}
         ${item.custom?`<button class="b-delete" data-id="${item.id}" title="Remove">✕</button>`:''}
       </div>`;
   }).join('') || '<div class="empty">Nothing with a fixed deadline right now. Tap "+ Add a reservation" to add one.</div>';
 
-  document.querySelectorAll('.booked-check').forEach(btn=>{
+  document.querySelectorAll('#bookingList .booked-check').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       setBooked(btn.dataset.id, !getBooked(btn.dataset.id));
       renderBookings();
     });
   });
-  document.querySelectorAll('.b-edit').forEach(btn=>{
-    btn.addEventListener('click', ()=> showEditBooking(btn.dataset.id, btn.dataset.custom === '1'));
+  document.querySelectorAll('#bookingList .b-edit, #bookingList .b-clickable').forEach(el=>{
+    el.addEventListener('click', ()=> showEditBooking(el.dataset.id, el.dataset.custom === '1'));
   });
-  document.querySelectorAll('.b-delete').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+  document.querySelectorAll('#bookingList .b-delete').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
       sharedState.customBookings = (sharedState.customBookings||[]).filter(cb=>cb.id!==btn.dataset.id);
       saveState();
       renderBookings();
     });
   });
 
-  const noDeadline = ACTIVITIES.filter(a=>NO_DEADLINE_IDS.includes(a.id));
+  // No fixed date — anything in NO_DEADLINE_IDS that still has no date set.
+  // The moment you edit one and give it a date, it moves up into the list above.
+  const datedIds = new Set(all.filter(x=>!x.custom).map(x=>x.id));
+  const noDeadline = ACTIVITIES.filter(a=>NO_DEADLINE_IDS.includes(a.id) && !datedIds.has(a.id));
   document.getElementById('noDeadlineList').innerHTML = noDeadline.map(a=>{
     const booked = getBooked(a.id);
     return `
     <div class="booking-row ${booked?'is-booked':''}">
       <button class="booked-check ${booked?'done':''}" data-id="${a.id}" title="${booked?'Mark not booked':'Mark booked'}">${booked?'✓':''}</button>
-      <span class="b-name">${escapeHtml(a.name)} <span style="color:var(--dim); font-weight:400;">— ${a.city}</span></span>
+      <span class="b-name b-clickable" data-id="${a.id}" data-custom="0">${escapeHtml(a.name)} <span style="color:var(--dim); font-weight:400;">— ${a.city}</span></span>
       <span class="b-meta">${booked?'Booked':"Book ahead when you're ready — no set deadline, but tickets can sell out closer to the date."}</span>
+      <button class="b-edit" data-id="${a.id}" data-custom="0" title="Set a date">✎ Set date</button>
     </div>`;
-  }).join('');
+  }).join('') || '<div class="empty">Nothing here right now.</div>';
   document.querySelectorAll('#noDeadlineList .booked-check').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       setBooked(btn.dataset.id, !getBooked(btn.dataset.id));
       renderBookings();
     });
+  });
+  document.querySelectorAll('#noDeadlineList .b-edit, #noDeadlineList .b-clickable').forEach(el=>{
+    el.addEventListener('click', ()=> showEditBooking(el.dataset.id, false));
   });
 }
 
@@ -2492,6 +2644,8 @@ function showEditBooking(id, isCustom){
         </div>
         <label>Notes</label>
         <textarea id="bkNotes">${escapeHtml(cb.notes||'')}</textarea>
+        <label>Purchase / booking link</label>
+        <input type="text" id="bkUrl" placeholder="https://..." value="${escapeHtml(cb.url||'')}">
         <div class="form-actions">
           <button class="btn-cancel" id="bkCancel">Cancel</button>
           <button class="btn-save" id="bkSave">Save</button>
@@ -2505,6 +2659,7 @@ function showEditBooking(id, isCustom){
       cb.city = overlay.querySelector('#bkCity').value;
       cb.date = overlay.querySelector('#bkDate').value;
       cb.notes = overlay.querySelector('#bkNotes').value.trim();
+      cb.url = overlay.querySelector('#bkUrl').value.trim();
       saveState();
       overlay.remove();
       renderBookings();
@@ -2513,12 +2668,16 @@ function showEditBooking(id, isCustom){
     const a = ACTIVITIES.find(x=>x.id===id);
     if(!a) return;
     const current = isoFromDate(getBookByDate(a));
+    const existingOverride = (sharedState.bookByOverrides && sharedState.bookByOverrides[id]) || {};
+    const existingUrl = existingOverride.url || a.url || '';
     overlay.innerHTML = `
       <div class="form-card">
-        <h3>Edit book-by date</h3>
+        <h3>Edit reservation</h3>
         <p style="font-size:13px; color:var(--dim); margin:0 0 4px;">${escapeHtml(a.name)}</p>
         <label>Book by</label>
         <input type="date" id="bkDate" value="${current}">
+        <label>Purchase / booking link</label>
+        <input type="text" id="bkUrl" placeholder="https://..." value="${escapeHtml(existingUrl)}">
         <div class="form-actions">
           <button class="btn-cancel" id="bkCancel">Cancel</button>
           <button class="btn-save" id="bkSave">Save</button>
@@ -2528,9 +2687,10 @@ function showEditBooking(id, isCustom){
     overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
     overlay.querySelector('#bkCancel').addEventListener('click', ()=> overlay.remove());
     overlay.querySelector('#bkSave').addEventListener('click', ()=>{
-      const val = overlay.querySelector('#bkDate').value;
+      const dateVal = overlay.querySelector('#bkDate').value;
+      const urlVal = overlay.querySelector('#bkUrl').value.trim();
       if(!sharedState.bookByOverrides) sharedState.bookByOverrides = {};
-      if(val) sharedState.bookByOverrides[id] = val;
+      if(dateVal || urlVal) sharedState.bookByOverrides[id] = { date: dateVal || null, url: urlVal || null };
       else delete sharedState.bookByOverrides[id];
       saveState();
       overlay.remove();
@@ -2558,7 +2718,9 @@ document.getElementById('addBookingBtn').addEventListener('click', ()=>{
         </div>
       </div>
       <label>Notes</label>
-      <textarea id="bkNotes" placeholder="Booking link, price, anything to remember"></textarea>
+      <textarea id="bkNotes" placeholder="Anything to remember"></textarea>
+      <label>Purchase / booking link</label>
+      <input type="text" id="bkUrl" placeholder="https://...">
       <div class="form-actions">
         <button class="btn-cancel" id="bkCancel">Cancel</button>
         <button class="btn-save" id="bkSave">Add</button>
@@ -2573,8 +2735,9 @@ document.getElementById('addBookingBtn').addEventListener('click', ()=>{
     const city = overlay.querySelector('#bkCity').value;
     const date = overlay.querySelector('#bkDate').value;
     const notes = overlay.querySelector('#bkNotes').value.trim();
+    const url = overlay.querySelector('#bkUrl').value.trim();
     if(!sharedState.customBookings) sharedState.customBookings = [];
-    sharedState.customBookings.push({ id:'book-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), name, city, date, notes });
+    sharedState.customBookings.push({ id:'book-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), name, city, date, notes, url });
     saveState();
     overlay.remove();
     renderBookings();
