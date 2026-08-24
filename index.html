@@ -225,6 +225,7 @@ main{max-width:920px; margin:0 auto; padding:26px 20px 100px;}
 .city-Travel{color:var(--pink); border-color:var(--pink); background:rgba(255,61,138,0.08);}
 .day-head .d-date{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--paper);}
 .day-head .d-title{font-weight:700; font-size:15px; margin-left:auto;}
+.d-title-edit{background:none; border:none; color:var(--dim); cursor:pointer; font-size:12px; flex-shrink:0;}
 .day-head .chev{color:var(--dim); transition:transform .2s;}
 .day-card.open .chev{transform:rotate(90deg);}
 .day-body{display:none; padding:14px 16px 16px;}
@@ -1562,7 +1563,7 @@ function setStatus(id, status){
   if(!sharedState.itemStatus) sharedState.itemStatus = {};
   if(status === 'active') delete sharedState.itemStatus[id];
   else sharedState.itemStatus[id] = status;
-  saveState();
+  saveField(`itemStatus.${id}`, status === 'active' ? null : status);
 }
 
 function imgFor(item, size){
@@ -1688,13 +1689,15 @@ function dayCardHtml(day, idx){
     : '<li style="color:var(--dim); border:none;">Open day — nothing locked in yet.</li>';
   const notesHtml = dayNotesHtml(idx);
   const isOpen = openDayIndices.has(idx);
+  const title = (sharedState.dayTitleOverrides && sharedState.dayTitleOverrides[idx]) || day.title;
 
   return `
     <div class="day-card reveal${isOpen?' open':''}" data-idx="${idx}">
       <div class="day-head">
         <span class="city-chip city-${day.city}">${day.city}</span>
         <span class="d-date mono">${day.date}</span>
-        <span class="d-title">${escapeHtml(day.title)}</span>
+        <span class="d-title">${escapeHtml(title)}</span>
+        <button class="d-title-edit" data-idx="${idx}" title="Edit title">✎</button>
         <span class="chev">▸</span>
       </div>
       <div class="day-body">
@@ -1901,15 +1904,11 @@ function renderItinerary(){
       const id = btn.dataset.id;
       const newStatus = getStatus(id) === 'completed' ? 'active' : 'completed';
       setStatus(id, newStatus);
-      // Patch the DOM directly instead of a full re-render — keeps open
-      // days open and avoids photos re-flickering back in.
-      const isDone = newStatus === 'completed';
-      document.querySelectorAll(`.plan-check[data-id="${id}"]`).forEach(b=>{
-        b.classList.toggle('done', isDone);
-        b.textContent = isDone ? '✓' : '';
-        const li = b.closest('li');
-        if(li) li.classList.toggle('done', isDone);
-      });
+      // Full re-render — safe now that day-open state persists in
+      // openDayIndices independently of rendering, so this can't collapse
+      // anything. Keeps checkbox state always driven from one source of
+      // truth instead of a hand-patched DOM copy that could drift.
+      renderItinerary();
       renderViewTabs();
       renderExplore();
     });
@@ -1949,6 +1948,22 @@ function renderItinerary(){
     btn.addEventListener('click', e=>{
       e.stopPropagation();
       showDayPicker(parseInt(btn.dataset.day, 10));
+    });
+  });
+  wrap.querySelectorAll('.d-title-edit').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.idx, 10);
+      const day = ITINERARY[idx];
+      const current = (sharedState.dayTitleOverrides && sharedState.dayTitleOverrides[idx]) || day.title;
+      const val = prompt('Day title:', current);
+      if(val === null) return;
+      const clean = val.trim();
+      if(!sharedState.dayTitleOverrides) sharedState.dayTitleOverrides = {};
+      if(clean && clean !== day.title) sharedState.dayTitleOverrides[idx] = clean;
+      else delete sharedState.dayTitleOverrides[idx];
+      saveState();
+      renderItinerary();
     });
   });
   wrap.querySelectorAll('.item-note-btn').forEach(btn=>{
@@ -2491,7 +2506,7 @@ function setBooked(id, val){
   if(!sharedState.bookedIds) sharedState.bookedIds = {};
   if(val) sharedState.bookedIds[id] = true;
   else delete sharedState.bookedIds[id];
-  saveState();
+  saveField(`bookedIds.${id}`, val ? true : null);
 }
 
 function getBookByDate(a){
@@ -2515,7 +2530,7 @@ function getAllBookings(){
     return {
       id: a.id, name: a.name, city: a.city, custom: false,
       date: getBookByDate(a),
-      meta: (override && override.date) ? null : a.bookBy,
+      meta: (override && override.notes != null) ? override.notes : ((override && override.date) ? null : a.bookBy),
       url: (override && override.url) || a.url,
     };
   });
@@ -2670,12 +2685,15 @@ function showEditBooking(id, isCustom){
     const current = isoFromDate(getBookByDate(a));
     const existingOverride = (sharedState.bookByOverrides && sharedState.bookByOverrides[id]) || {};
     const existingUrl = existingOverride.url || a.url || '';
+    const existingNotes = existingOverride.notes != null ? existingOverride.notes : (a.bookBy || '');
     overlay.innerHTML = `
       <div class="form-card">
         <h3>Edit reservation</h3>
         <p style="font-size:13px; color:var(--dim); margin:0 0 4px;">${escapeHtml(a.name)}</p>
         <label>Book by</label>
         <input type="date" id="bkDate" value="${current}">
+        <label>Notes</label>
+        <textarea id="bkNotes" placeholder="Booking details, reservation number, anything to remember">${escapeHtml(existingNotes)}</textarea>
         <label>Purchase / booking link</label>
         <input type="text" id="bkUrl" placeholder="https://..." value="${escapeHtml(existingUrl)}">
         <div class="form-actions">
@@ -2689,9 +2707,13 @@ function showEditBooking(id, isCustom){
     overlay.querySelector('#bkSave').addEventListener('click', ()=>{
       const dateVal = overlay.querySelector('#bkDate').value;
       const urlVal = overlay.querySelector('#bkUrl').value.trim();
+      const notesVal = overlay.querySelector('#bkNotes').value.trim();
       if(!sharedState.bookByOverrides) sharedState.bookByOverrides = {};
-      if(dateVal || urlVal) sharedState.bookByOverrides[id] = { date: dateVal || null, url: urlVal || null };
-      else delete sharedState.bookByOverrides[id];
+      if(dateVal || urlVal || notesVal){
+        sharedState.bookByOverrides[id] = { date: dateVal || null, url: urlVal || null, notes: notesVal || null };
+      } else {
+        delete sharedState.bookByOverrides[id];
+      }
       saveState();
       overlay.remove();
       renderBookings();
@@ -3081,6 +3103,28 @@ function saveState(){
   }
 }
 
+// For frequent single-value toggles (checkboxes etc) — writes only that one
+// field via Firestore's dot-path update instead of the whole document, so a
+// slightly-stale full-state write from a moment ago can't land later and
+// clobber this specific change. This is what was causing checkboxes to
+// sometimes silently revert.
+function saveField(fieldPath, value){
+  if(firebaseReady && getTripCode()){
+    if(!hasLoadedRemoteState){
+      console.warn('Skipped save — still waiting on the real synced data to load, to avoid overwriting it.');
+      return;
+    }
+    const update = {};
+    update[fieldPath] = (value === null || value === undefined) ? firebase.firestore.FieldValue.delete() : value;
+    tripDoc().update(update).catch(e=>{
+      if(e && e.code === 'not-found'){ saveState(); }
+      else console.error('field save failed', e);
+    });
+  } else {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(sharedState));
+  }
+}
+
 function connectToTrip(){
   if(unsubscribeTrip){ unsubscribeTrip(); unsubscribeTrip = null; }
   hasLoadedRemoteState = false;
@@ -3090,7 +3134,7 @@ function connectToTrip(){
     setSync('local');
     const cached = localStorage.getItem(LOCAL_KEY);
     if(cached){
-      try{ sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], itemNotes:{}, budgetTotal:4000, packing:null}, JSON.parse(cached)); }catch(e){}
+      try{ sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], itemNotes:{}, dayTitleOverrides:{}, budgetTotal:4000, packing:null}, JSON.parse(cached)); }catch(e){}
     }
     hasLoadedRemoteState = true;
     renderAll();
@@ -3105,12 +3149,12 @@ function connectToTrip(){
 
   unsubscribeTrip = tripDoc().onSnapshot(doc=>{
     if(doc.exists){
-      sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], itemNotes:{}, budgetTotal:4000, packing:null}, doc.data());
+      sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], itemNotes:{}, dayTitleOverrides:{}, budgetTotal:4000, packing:null}, doc.data());
       hasLoadedRemoteState = true;
     } else if(!hasLoadedRemoteState){
       // Only true the very first time this trip code is ever used — never
       // re-initialize over data that already exists.
-      sharedState = {expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], itemNotes:{}, budgetTotal:4000, packing:null};
+      sharedState = {expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], itemNotes:{}, dayTitleOverrides:{}, budgetTotal:4000, packing:null};
       hasLoadedRemoteState = true;
       tripDoc().set(sharedState);
     }
