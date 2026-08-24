@@ -2528,7 +2528,7 @@ function getAllBookings(){
   }).map(a=>{
     const override = sharedState.bookByOverrides && sharedState.bookByOverrides[a.id];
     return {
-      id: a.id, name: a.name, city: a.city, custom: false,
+      id: a.id, name: (override && override.name) || a.name, city: a.city, custom: false,
       date: getBookByDate(a),
       meta: (override && override.notes != null) ? override.notes : ((override && override.date) ? null : a.bookBy),
       url: (override && override.url) || a.url,
@@ -2614,10 +2614,12 @@ function renderBookings(){
   const noDeadline = ACTIVITIES.filter(a=>NO_DEADLINE_IDS.includes(a.id) && !datedIds.has(a.id));
   document.getElementById('noDeadlineList').innerHTML = noDeadline.map(a=>{
     const booked = getBooked(a.id);
+    const override = sharedState.bookByOverrides && sharedState.bookByOverrides[a.id];
+    const displayName = (override && override.name) || a.name;
     return `
     <div class="booking-row ${booked?'is-booked':''}">
       <button class="booked-check ${booked?'done':''}" data-id="${a.id}" title="${booked?'Mark not booked':'Mark booked'}">${booked?'✓':''}</button>
-      <span class="b-name b-clickable" data-id="${a.id}" data-custom="0">${escapeHtml(a.name)} <span style="color:var(--dim); font-weight:400;">— ${a.city}</span></span>
+      <span class="b-name b-clickable" data-id="${a.id}" data-custom="0">${escapeHtml(displayName)} <span style="color:var(--dim); font-weight:400;">— ${a.city}</span></span>
       <span class="b-meta">${booked?'Booked':"Book ahead when you're ready — no set deadline, but tickets can sell out closer to the date."}</span>
       <button class="b-edit" data-id="${a.id}" data-custom="0" title="Set a date">✎ Set date</button>
     </div>`;
@@ -2686,10 +2688,12 @@ function showEditBooking(id, isCustom){
     const existingOverride = (sharedState.bookByOverrides && sharedState.bookByOverrides[id]) || {};
     const existingUrl = existingOverride.url || a.url || '';
     const existingNotes = existingOverride.notes != null ? existingOverride.notes : (a.bookBy || '');
+    const existingName = existingOverride.name || a.name;
     overlay.innerHTML = `
       <div class="form-card">
         <h3>Edit reservation</h3>
-        <p style="font-size:13px; color:var(--dim); margin:0 0 4px;">${escapeHtml(a.name)}</p>
+        <label>Title</label>
+        <input type="text" id="bkName" value="${escapeHtml(existingName)}">
         <label>Book by</label>
         <input type="date" id="bkDate" value="${current}">
         <label>Notes</label>
@@ -2705,12 +2709,16 @@ function showEditBooking(id, isCustom){
     overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
     overlay.querySelector('#bkCancel').addEventListener('click', ()=> overlay.remove());
     overlay.querySelector('#bkSave').addEventListener('click', ()=>{
+      const nameVal = overlay.querySelector('#bkName').value.trim();
       const dateVal = overlay.querySelector('#bkDate').value;
       const urlVal = overlay.querySelector('#bkUrl').value.trim();
       const notesVal = overlay.querySelector('#bkNotes').value.trim();
       if(!sharedState.bookByOverrides) sharedState.bookByOverrides = {};
-      if(dateVal || urlVal || notesVal){
-        sharedState.bookByOverrides[id] = { date: dateVal || null, url: urlVal || null, notes: notesVal || null };
+      if((nameVal && nameVal !== a.name) || dateVal || urlVal || notesVal){
+        sharedState.bookByOverrides[id] = {
+          name: (nameVal && nameVal !== a.name) ? nameVal : null,
+          date: dateVal || null, url: urlVal || null, notes: notesVal || null
+        };
       } else {
         delete sharedState.bookByOverrides[id];
       }
