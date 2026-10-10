@@ -127,6 +127,18 @@ nav.tabs{
   font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:700;
   width:34px; height:34px; border-radius:50%; cursor:pointer; flex-shrink:0;
 }
+.trip-settings-btn{
+  position:absolute; top:14px; right:58px; z-index:5;
+  background:rgba(10,10,13,0.55); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,0.2);
+  font-size:14px; width:34px; height:34px; border-radius:50%; cursor:pointer; flex-shrink:0;
+}
+.day-remove{background:none; border:none; color:var(--dim); cursor:pointer; font-size:13px; flex-shrink:0;}
+.add-day-btn{
+  display:block; width:100%; margin:16px 0 6px; padding:13px;
+  background:var(--bg2); border:1px dashed var(--line); border-radius:10px;
+  color:var(--paper); font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.05em;
+  text-transform:uppercase; cursor:pointer;
+}
 
 /* Bottom, native-app-style tab bar on mobile */
 @media (max-width:680px){
@@ -618,6 +630,19 @@ form.expense-form button{
 
 footer{max-width:920px; margin:0 auto; padding:0 20px 50px; color:var(--dim); font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:center;}
 
+.data-size-note{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--dim); margin:-8px 0 16px;}
+
+.save-error-banner{
+  position:fixed; bottom:0; left:0; right:0; z-index:200;
+  background:var(--red); color:#fff; font-family:'IBM Plex Mono',monospace; font-size:12.5px;
+  padding:14px 20px; text-align:center; transform:translateY(100%); transition:transform .25s ease;
+  box-shadow:0 -4px 20px rgba(0,0,0,0.3);
+}
+.save-error-banner.show{transform:translateY(0);}
+@media (max-width:680px){
+  .save-error-banner{padding-bottom:calc(14px + env(safe-area-inset-bottom) + 70px);}
+}
+
 /* ===== Back to top ===== */
 .back-to-top{
   position:fixed; right:18px; bottom:26px; z-index:60;
@@ -715,6 +740,9 @@ button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
 /* Hover effects only for devices that actually have a mouse — prevents
    stuck/ghost highlight states on touch after the list re-renders. */
 @media (hover: hover) and (pointer: fine) {
+  .trip-settings-btn:hover{border-color:var(--amber);}
+  .day-remove:hover{color:var(--red);}
+  .add-day-btn:hover{border-color:var(--amber); color:var(--amber);}
   .b-clickable:hover{text-decoration:underline;}
   .card-edit-btn:hover{border-color:var(--amber); color:var(--amber);}
   .b-edit:hover{color:var(--amber);}
@@ -771,12 +799,13 @@ button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
     <img id="heroImg" loading="eager" src="https://loremflickr.com/1200/500/tokyo,shibuya,night,neon" data-photo-query="Tokyo Shibuya crossing night neon" data-cat="activity" onerror="handleImgError(this)" onload="this.style.opacity=1" alt="Tokyo at night">
     <div class="hero-fade"></div>
     <button class="currency-toggle" id="currencyToggle">$</button>
+    <button class="trip-settings-btn" id="tripSettingsBtn" title="Trip settings">⚙️</button>
   </div>
   <div class="hero-content">
-    <div class="kicker">The Lads Takeover <b>Japan</b> · Shared Trip App</div>
-    <h1 class="title display">東京<span class="dot">・</span>大阪<span class="dot">・</span>京都</h1>
+    <div class="kicker" id="headerKicker">The Lads Takeover <b>Japan</b> · Shared Trip App</div>
+    <h1 class="title display" id="headerTitle">東京<span class="dot">・</span>大阪<span class="dot">・</span>京都</h1>
     <div class="dates-row">
-      <div><span class="lbl">TRIP</span>Nov 27 – Dec 8, 2026</div>
+      <div><span class="lbl">TRIP</span><span id="headerDates">Nov 27 – Dec 8, 2026</span></div>
       <div><span class="lbl">RAIL PASS</span>7-day JR Pass</div>
     </div>
   </div>
@@ -856,6 +885,7 @@ button:active, .map-link:active, .jump-pill:active, a.b-cal:active{
       <button class="trip-code-btn" id="nameBtn"></button>
       <button class="trip-code-btn" id="tripCodeBtn"></button>
     </div>
+    <div class="data-size-note" id="dataSizeNote"></div>
 
     <div class="budget-hero">
       <div class="budget-hero-top">
@@ -1235,6 +1265,84 @@ function photoQueryFor(item){
   return `${CAT_GENERIC_PHRASE[item.category] || 'japan travel'} ${item.city}`;
 }
 
+/* =========================================================
+   TRIP SETTINGS — title, kicker, and date range, all editable.
+   Defaults preserve exactly what this trip already is, so
+   nothing changes until someone actually opens Trip Settings.
+   ========================================================= */
+function getTripSettings(){
+  return Object.assign({
+    title: '東京 ⟡ 大阪 ⟡ 京都',
+    kicker: 'The Lads Takeover Japan',
+    startDate: '2026-11-27',
+    endDate: '2026-12-08',
+  }, sharedState.tripSettings || {});
+}
+function getTripStart(){ return new Date(getTripSettings().startDate + 'T00:00:00'); }
+function getTripEnd(){ return new Date(getTripSettings().endDate + 'T23:59:59'); }
+
+function renderHeader(){
+  const ts = getTripSettings();
+  document.getElementById('headerKicker').textContent = ts.kicker + ' · Shared Trip App';
+  document.getElementById('headerTitle').textContent = ts.title;
+  const startStr = getTripStart().toLocaleDateString(undefined, {month:'short', day:'numeric'});
+  const endStr = getTripEnd().toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+  document.getElementById('headerDates').textContent = `${startStr} – ${endStr}`;
+}
+
+function showTripSettings(){
+  const ts = getTripSettings();
+  const overlay = document.createElement('div');
+  overlay.className = 'surprise-overlay';
+  overlay.innerHTML = `
+    <div class="form-card">
+      <h3>Trip settings</h3>
+      <label>Trip title</label>
+      <input type="text" id="tsTitle" value="${escapeHtml(ts.title)}">
+      <label>Subtitle</label>
+      <input type="text" id="tsKicker" value="${escapeHtml(ts.kicker)}">
+      <div class="row2">
+        <div><label>Start date</label><input type="date" id="tsStart" value="${ts.startDate}"></div>
+        <div><label>End date</label><input type="date" id="tsEnd" value="${ts.endDate}"></div>
+      </div>
+      <div class="form-hint">Changing dates updates the countdown and budget pacing. To fully switch to a new destination for a future trip, also set a new trip code (Budget tab) for a clean slate, and add/remove days below in Itinerary.</div>
+      <div class="form-actions">
+        <button class="btn-cancel" id="tsCancel">Cancel</button>
+        <button class="btn-save" id="tsSave">Save</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#tsCancel').addEventListener('click', ()=> overlay.remove());
+  overlay.querySelector('#tsSave').addEventListener('click', ()=>{
+    const title = overlay.querySelector('#tsTitle').value.trim() || ts.title;
+    const kicker = overlay.querySelector('#tsKicker').value.trim() || ts.kicker;
+    const startDate = overlay.querySelector('#tsStart').value || ts.startDate;
+    const endDate = overlay.querySelector('#tsEnd').value || ts.endDate;
+    sharedState.tripSettings = { title, kicker, startDate, endDate };
+    saveState();
+    overlay.remove();
+    renderHeader();
+    renderItinerary();
+    renderBudget();
+  });
+}
+document.getElementById('tripSettingsBtn').addEventListener('click', showTripSettings);
+
+// Deterministic color per city name from a fixed palette — works for any
+// destination/city, not just the three this trip happens to have.
+const CITY_PALETTE = ['#FF4B3E','#F4A63D','#3FBF8F','#FF3D8A','#4F9BD9','#9E8CF5','#E0716B','#6FCF97'];
+function cityColorFor(cityName){
+  if(cityName === 'Travel') return '#FF3D8A';
+  let hash = 0;
+  for(let i=0;i<cityName.length;i++) hash = (hash*31 + cityName.charCodeAt(i)) >>> 0;
+  return CITY_PALETTE[hash % CITY_PALETTE.length];
+}
+function cityChipHtml(cityName){
+  const c = cityColorFor(cityName);
+  return `<span class="city-chip" style="color:${c}; border-color:${c}; background:${c}14;">${escapeHtml(cityName)}</span>`;
+}
+
 const CITY_BANNERS = {
   Tokyo:{ photo:'tokyo,shibuya,night,neon', dates:'Nov 28 – Dec 1 · Dec 7 – 8' },
   Osaka:{ photo:'osaka,dotonbori,night', dates:'Dec 1 – 4' },
@@ -1580,7 +1688,11 @@ function photoQueryAttr(item){
 }
 function cityBannerImg(city){
   const b = CITY_BANNERS[city];
-  return `https://loremflickr.com/900/400/${encodeURIComponent(b.photo)}`;
+  const q = b ? b.photo : `${city},skyline,travel`;
+  return `https://loremflickr.com/900/400/${encodeURIComponent(q)}`;
+}
+function cityBannerQuery(city){
+  return CITY_BANNERS[city] ? `${city} japan skyline` : `${city} skyline travel`;
 }
 function mapUrl(item){
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name + ' ' + item.city + ' Japan')}`;
@@ -1621,45 +1733,65 @@ function findActivityFor(itemName, city){
   return hit;
 }
 
-function dayExtrasFor(idx){
-  return (sharedState.dayExtras && sharedState.dayExtras[idx]) || [];
+// Itinerary days are now fully editable, stored data — seeded once from
+// the original Japan plan, then read/written from sharedState from then on.
+// Each day gets a stable id that never changes even if days are added,
+// removed, or reordered, so notes/extras/order attached to a day never
+// get scrambled onto the wrong one.
+function getItineraryDays(){
+  if(!sharedState.itineraryDays){
+    sharedState.itineraryDays = ITINERARY.map((d,i)=>{
+      const id = 'd'+i;
+      const titleOverride = sharedState.dayTitleOverrides && sharedState.dayTitleOverrides[i];
+      return {
+        id, date:d.date, city:d.city,
+        title: titleOverride || d.title,
+        note: d.note || '', items: d.items || [], lodging: d.lodging || ''
+      };
+    });
+  }
+  return sharedState.itineraryDays;
+}
+
+function dayExtrasFor(dayId){
+  return (sharedState.dayExtras && sharedState.dayExtras[dayId]) || [];
 }
 
 // Builds the full, ordered, filtered list of entries for a day — merging
 // the original static plan items with anything added from Explore,
 // respecting any saved reorder, and hiding anything removed.
-function getDayEntries(day, idx){
+function getDayEntries(day){
   const entryMap = {};
   const defaultOrder = [];
 
-  day.items.forEach((it, i)=>{
-    const key = `s${idx}-${i}`;
+  (day.items||[]).forEach((it, i)=>{
+    const key = `s${day.id}-${i}`;
     const match = findActivityFor(it.name, day.city);
     entryMap[key] = { key, match, label: it.name, priceStr: it.price ? formatPrice(it.price) : null };
     defaultOrder.push(key);
   });
-  dayExtrasFor(idx).forEach(id=>{
+  dayExtrasFor(day.id).forEach(id=>{
     const match = allActivities().find(a=>a.id===id);
     if(!match) return;
     entryMap[id] = { key:id, match, label: match.name, priceStr: match.price ? formatPrice(match.price) : null };
     defaultOrder.push(id);
   });
 
-  const savedOrder = (sharedState.dayOrder && sharedState.dayOrder[idx]) || null;
+  const savedOrder = (sharedState.dayOrder && sharedState.dayOrder[day.id]) || null;
   let order = savedOrder ? savedOrder.filter(k=>entryMap[k]) : [];
   defaultOrder.forEach(k=>{ if(!order.includes(k)) order.push(k); }); // append anything new
 
-  const removed = new Set((sharedState.dayRemoved && sharedState.dayRemoved[idx]) || []);
+  const removed = new Set((sharedState.dayRemoved && sharedState.dayRemoved[day.id]) || []);
   return order.filter(k=>!removed.has(k)).map(k=>entryMap[k]);
 }
 
-function ensureDayOrder(idx, entries){
+function ensureDayOrder(dayId, entries){
   if(!sharedState.dayOrder) sharedState.dayOrder = {};
-  sharedState.dayOrder[idx] = entries.map(e=>e.key);
-  return sharedState.dayOrder[idx];
+  sharedState.dayOrder[dayId] = entries.map(e=>e.key);
+  return sharedState.dayOrder[dayId];
 }
 
-function planItemLi(entry, idx, isFirst, isLast){
+function planItemLi(entry, dayId, isFirst, isLast){
   const match = entry.match;
   const done = match ? getStatus(match.id) === 'completed' : false;
   const media = match
@@ -1668,10 +1800,10 @@ function planItemLi(entry, idx, isFirst, isLast){
   const checkbox = match
     ? `<button class="plan-check ${done?'done':''}" data-id="${match.id}" title="${done?'Mark not done':'Mark done'}">${done?'✓':''}</button>`
     : '<span style="width:22px; flex-shrink:0;"></span>';
-  const noteCount = itemNotesFor(idx, entry.key).length;
-  return `<li class="${done?'done':''}" data-key="${entry.key}" data-day="${idx}">
+  const noteCount = itemNotesFor(dayId, entry.key).length;
+  return `<li class="${done?'done':''}" data-key="${entry.key}" data-day="${dayId}">
     ${checkbox}${media} <span class="li-text">${escapeHtml(entry.label)}</span> ${entry.priceStr?`<span class="price">${escapeHtml(entry.priceStr)}</span>`:''}
-    <button class="item-note-btn ${noteCount?'has-notes':''}" data-day="${idx}" data-key="${entry.key}" data-name="${escapeHtml(entry.label)}" title="Notes on this item">📝${noteCount?`<span class="note-count">${noteCount}</span>`:''}</button>
+    <button class="item-note-btn ${noteCount?'has-notes':''}" data-day="${dayId}" data-key="${entry.key}" data-name="${escapeHtml(entry.label)}" title="Notes on this item">📝${noteCount?`<span class="note-count">${noteCount}</span>`:''}</button>
     <span class="reorder-btns">
       <button class="li-move" data-dir="up" ${isFirst?'disabled':''} title="Move up">▲</button>
       <button class="li-move" data-dir="down" ${isLast?'disabled':''} title="Move down">▼</button>
@@ -1680,36 +1812,37 @@ function planItemLi(entry, idx, isFirst, isLast){
   </li>`;
 }
 
-let openDayIndices = new Set([0]);
+let openDayIds = new Set();
 
-function dayCardHtml(day, idx){
-  const entries = getDayEntries(day, idx);
+function dayCardHtml(day, isFirstDay){
+  const entries = getDayEntries(day);
   const itemsHtml = entries.length
-    ? entries.map((e,i)=> planItemLi(e, idx, i===0, i===entries.length-1)).join('')
+    ? entries.map((e,i)=> planItemLi(e, day.id, i===0, i===entries.length-1)).join('')
     : '<li style="color:var(--dim); border:none;">Open day — nothing locked in yet.</li>';
-  const notesHtml = dayNotesHtml(idx);
-  const isOpen = openDayIndices.has(idx);
-  const title = (sharedState.dayTitleOverrides && sharedState.dayTitleOverrides[idx]) || day.title;
+  const notesHtml = dayNotesHtml(day.id);
+  const isOpen = isFirstDay ? !openDayIds.has('__closed_'+day.id) : openDayIds.has(day.id);
+  const c = cityColorFor(day.city);
 
   return `
-    <div class="day-card reveal${isOpen?' open':''}" data-idx="${idx}">
+    <div class="day-card reveal${isOpen?' open':''}" data-day-id="${day.id}">
       <div class="day-head">
-        <span class="city-chip city-${day.city}">${day.city}</span>
-        <span class="d-date mono">${day.date}</span>
-        <span class="d-title">${escapeHtml(title)}</span>
-        <button class="d-title-edit" data-idx="${idx}" title="Edit title">✎</button>
+        <span class="city-chip" style="color:${c}; border-color:${c}; background:${c}14;">${escapeHtml(day.city)}</span>
+        <span class="d-date mono">${escapeHtml(day.date)}</span>
+        <span class="d-title">${escapeHtml(day.title)}</span>
+        <button class="d-title-edit" data-day-id="${day.id}" title="Edit day">✎</button>
+        <button class="day-remove" data-day-id="${day.id}" title="Remove this day">✕</button>
         <span class="chev">▸</span>
       </div>
       <div class="day-body">
         ${day.note?`<div class="day-note">${escapeHtml(day.note)}</div>`:''}
         <ul class="plan-list">${itemsHtml}</ul>
-        <button class="add-from-explore-btn" data-day="${idx}">+ Add from Explore</button>
+        <button class="add-from-explore-btn" data-day-id="${day.id}">+ Add from Explore</button>
         ${day.lodging?`<div class="lodging-strip">🛏 <b>Staying:</b> ${escapeHtml(day.lodging)}</div>`:''}
         <div class="day-notes-label">Notes — tagged with who wrote them, synced for both of you</div>
         <div class="day-notes-list">${notesHtml}</div>
         <div class="day-notes-add">
-          <input type="text" class="day-notes-input" data-day="${idx}" placeholder="Add a note — reservation confirmed, change of plans...">
-          <button class="day-notes-add-btn" data-day="${idx}">Add</button>
+          <input type="text" class="day-notes-input" data-day-id="${day.id}" placeholder="Add a note — reservation confirmed, change of plans...">
+          <button class="day-notes-add-btn" data-day-id="${day.id}">Add</button>
         </div>
       </div>
     </div>`;
@@ -1728,37 +1861,37 @@ function relativeTime(ts){
   return new Date(ts).toLocaleDateString(undefined, {month:'short', day:'numeric'});
 }
 
-function dayNotesFor(idx){
-  const raw = sharedState.dayNotes && sharedState.dayNotes[idx];
+function dayNotesFor(dayId){
+  const raw = sharedState.dayNotes && sharedState.dayNotes[dayId];
   if(!raw) return [];
   if(typeof raw === 'string') return raw ? [{id:'legacy', author:'', text:raw, ts:0}] : [];
   return raw;
 }
 
-function dayNotesHtml(idx){
-  const notes = dayNotesFor(idx);
+function dayNotesHtml(dayId){
+  const notes = dayNotesFor(dayId);
   if(!notes.length) return '<div class="day-notes-empty">No notes yet.</div>';
   return notes.map(n=>`
     <div class="note-row">
       <div class="note-meta">${n.author?`<b>${escapeHtml(n.author)}</b>`:'<b>Note</b>'} ${n.ts?`<span class="note-time">${relativeTime(n.ts)}</span>`:''}</div>
       <div class="note-text">${escapeHtml(n.text)}</div>
-      <button class="note-remove" data-day="${idx}" data-id="${n.id}" title="Delete note">✕</button>
+      <button class="note-remove" data-day-id="${dayId}" data-id="${n.id}" title="Delete note">✕</button>
     </div>
   `).join('');
 }
 
 // Per-item notes — same authored-list idea as day notes, but scoped to one
 // specific plan item within a day (keyed by that item's stable list key).
-function itemNotesFor(dayIdx, key){
-  return (sharedState.itemNotes && sharedState.itemNotes[dayIdx] && sharedState.itemNotes[dayIdx][key]) || [];
+function itemNotesFor(dayId, key){
+  return (sharedState.itemNotes && sharedState.itemNotes[dayId] && sharedState.itemNotes[dayId][key]) || [];
 }
 
-function showItemNotes(dayIdx, key, itemName){
+function showItemNotes(dayId, key, itemName){
   const overlay = document.createElement('div');
   overlay.className = 'surprise-overlay';
 
   function render(){
-    const notes = itemNotesFor(dayIdx, key);
+    const notes = itemNotesFor(dayId, key);
     const notesHtml = notes.length ? notes.map(n=>`
       <div class="note-row">
         <div class="note-meta">${n.author?`<b>${escapeHtml(n.author)}</b>`:'<b>Note</b>'} ${n.ts?`<span class="note-time">${relativeTime(n.ts)}</span>`:''}</div>
@@ -1783,7 +1916,7 @@ function showItemNotes(dayIdx, key, itemName){
     overlay.querySelector('#itemNoteClose').addEventListener('click', ()=> overlay.remove());
     overlay.querySelectorAll('.note-remove').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        sharedState.itemNotes[dayIdx][key] = sharedState.itemNotes[dayIdx][key].filter(n=>n.id!==btn.dataset.id);
+        sharedState.itemNotes[dayId][key] = sharedState.itemNotes[dayId][key].filter(n=>n.id!==btn.dataset.id);
         saveState();
         render();
         renderItinerary();
@@ -1797,9 +1930,9 @@ function showItemNotes(dayIdx, key, itemName){
       const name = ensureUserName();
       if(!name) return;
       if(!sharedState.itemNotes) sharedState.itemNotes = {};
-      if(!sharedState.itemNotes[dayIdx]) sharedState.itemNotes[dayIdx] = {};
-      if(!sharedState.itemNotes[dayIdx][key]) sharedState.itemNotes[dayIdx][key] = [];
-      sharedState.itemNotes[dayIdx][key].push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), author:name, text, ts:Date.now() });
+      if(!sharedState.itemNotes[dayId]) sharedState.itemNotes[dayId] = {};
+      if(!sharedState.itemNotes[dayId][key]) sharedState.itemNotes[dayId][key] = [];
+      sharedState.itemNotes[dayId][key].push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), author:name, text, ts:Date.now() });
       saveState();
       render();
       renderItinerary();
@@ -1815,37 +1948,41 @@ function showItemNotes(dayIdx, key, itemName){
 
 function connectorHtml(day){
   return `
-    <div class="connector-row" style="${day.lodging?'flex-wrap:wrap;':''}">
+    <div class="connector-row" style="${day.lodging?'flex-wrap:wrap;':''}" data-day-id="${day.id}">
       <span class="c-icon">🚄</span>
       <span class="c-text">${escapeHtml(day.title)}</span>
       <span class="track"></span>
       <span class="c-date mono">${escapeHtml(day.date)}</span>
+      <button class="d-title-edit" data-day-id="${day.id}" title="Edit">✎</button>
+      <button class="day-remove" data-day-id="${day.id}" title="Remove">✕</button>
       ${day.lodging?`<div style="flex-basis:100%; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--dim); padding-left:27px;">🛏 ${escapeHtml(day.lodging)}</div>`:''}
     </div>`;
 }
 
-function bannerHtml(city){
-  const b = CITY_BANNERS[city];
+function bannerHtml(city, days){
+  const cityDays = days.filter(d=>d.city===city);
+  const dateRange = cityDays.length ? (cityDays.length===1 ? cityDays[0].date : `${cityDays[0].date} – ${cityDays[cityDays.length-1].date}`) : '';
+  const c = cityColorFor(city);
   return `
-    <div class="city-banner reveal city-${city}">
-      <img loading="eager" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(city)} japan skyline" data-cat="activity" onerror="handleImgError(this)" onload="this.style.opacity=1" alt="${city}">
+    <div class="city-banner reveal" style="--banner-color:${c};">
+      <img loading="eager" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(cityBannerQuery(city))}" data-cat="activity" onerror="handleImgError(this)" onload="this.style.opacity=1" alt="${escapeHtml(city)}">
       <div class="banner-fade"></div>
       <div class="banner-content">
-        <div class="banner-name display">${city}</div>
-        <div class="banner-dates mono">${b.dates}</div>
+        <div class="banner-name display" style="color:${c};">${escapeHtml(city)}</div>
+        <div class="banner-dates mono">${escapeHtml(dateRange)}</div>
       </div>
     </div>`;
 }
 
-const TRIP_START = new Date('2026-11-27T00:00:00');
-const TRIP_END = new Date('2026-12-08T23:59:59');
-
 function renderTripStatus(){
   const el = document.getElementById('tripStatus');
+  const tripStart = getTripStart();
+  const tripEnd = getTripEnd();
+  const totalDays = Math.round((tripEnd - tripStart)/86400000) + 1;
   const now = new Date();
   let html = '';
-  if(now < TRIP_START){
-    const diff = TRIP_START - now;
+  if(now < tripStart){
+    const diff = tripStart - now;
     const days = Math.floor(diff/86400000);
     const hours = Math.floor((diff%86400000)/3600000);
     const mins = Math.floor((diff%3600000)/60000);
@@ -1858,11 +1995,11 @@ function renderTripStatus(){
           <div><div class="ts-num">${mins}</div><div class="ts-unit">min</div></div>
         </div>
       </div>`;
-  } else if(now <= TRIP_END){
-    const dayNum = Math.floor((now - TRIP_START)/86400000) + 1;
-    html = `<div class="trip-status"><div class="ts-label">You're in Japan</div><div class="ts-big">Day ${dayNum} of 12</div></div>`;
+  } else if(now <= tripEnd){
+    const dayNum = Math.floor((now - tripStart)/86400000) + 1;
+    html = `<div class="trip-status"><div class="ts-label">You're on the trip</div><div class="ts-big">Day ${dayNum} of ${totalDays}</div></div>`;
   } else {
-    html = `<div class="trip-status"><div class="ts-label">Trip complete</div><div class="ts-big">お帰りなさい 🎌</div></div>`;
+    html = `<div class="trip-status"><div class="ts-label">Trip complete</div><div class="ts-big">🎌</div></div>`;
   }
   el.innerHTML = html;
 }
@@ -1874,28 +2011,37 @@ function renderItinerary(){
 
   renderTripStatus();
   const wrap = document.getElementById('itineraryList');
+  const days = getItineraryDays();
   let html = '';
   let lastCity = null;
-  ITINERARY.forEach((day, idx)=>{
+  days.forEach((day, i)=>{
     if(day.city === 'Travel'){
       html += connectorHtml(day);
       lastCity = null; // force next real city to show a fresh banner
       return;
     }
     if(day.city !== lastCity){
-      html += bannerHtml(day.city);
+      html += bannerHtml(day.city, days);
       lastCity = day.city;
     }
-    html += dayCardHtml(day, idx);
+    html += dayCardHtml(day, i===0);
   });
+  html += `<button class="add-day-btn" id="addDayBtn">+ Add a day</button>`;
   wrap.innerHTML = html;
   wrap.querySelectorAll('.day-head').forEach(h=>{
     h.addEventListener('click', ()=>{
       const card = h.closest('.day-card');
       card.classList.toggle('open');
-      const idx = parseInt(card.dataset.idx, 10);
-      if(card.classList.contains('open')) openDayIndices.add(idx);
-      else openDayIndices.delete(idx);
+      const dayId = card.dataset.dayId;
+      const isFirstCard = wrap.querySelector('.day-card') === card;
+      if(isFirstCard){
+        // first day defaults open — track only when explicitly closed
+        if(card.classList.contains('open')) openDayIds.delete('__closed_'+dayId);
+        else openDayIds.add('__closed_'+dayId);
+      } else {
+        if(card.classList.contains('open')) openDayIds.add(dayId);
+        else openDayIds.delete(dayId);
+      }
     });
   });
   wrap.querySelectorAll('.plan-check').forEach(btn=>{
@@ -1904,10 +2050,6 @@ function renderItinerary(){
       const id = btn.dataset.id;
       const newStatus = getStatus(id) === 'completed' ? 'active' : 'completed';
       setStatus(id, newStatus);
-      // Full re-render — safe now that day-open state persists in
-      // openDayIndices independently of rendering, so this can't collapse
-      // anything. Keeps checkbox state always driven from one source of
-      // truth instead of a hand-patched DOM copy that could drift.
       renderItinerary();
       renderViewTabs();
       renderExplore();
@@ -1917,11 +2059,11 @@ function renderItinerary(){
     btn.addEventListener('click', e=>{
       e.stopPropagation();
       const li = btn.closest('li');
-      const dayIdx = parseInt(li.dataset.day, 10);
+      const dayId = li.dataset.day;
       const key = li.dataset.key;
       if(!sharedState.dayRemoved) sharedState.dayRemoved = {};
-      if(!sharedState.dayRemoved[dayIdx]) sharedState.dayRemoved[dayIdx] = [];
-      sharedState.dayRemoved[dayIdx].push(key);
+      if(!sharedState.dayRemoved[dayId]) sharedState.dayRemoved[dayId] = [];
+      sharedState.dayRemoved[dayId].push(key);
       saveState();
       renderItinerary();
     });
@@ -1931,11 +2073,11 @@ function renderItinerary(){
       e.stopPropagation();
       if(btn.disabled) return;
       const li = btn.closest('li');
-      const dayIdx = parseInt(li.dataset.day, 10);
+      const dayId = li.dataset.day;
       const key = li.dataset.key;
-      const day = ITINERARY[dayIdx];
-      const entries = getDayEntries(day, dayIdx);
-      const order = ensureDayOrder(dayIdx, entries);
+      const day = days.find(d=>d.id===dayId);
+      const entries = getDayEntries(day);
+      const order = ensureDayOrder(dayId, entries);
       const pos = order.indexOf(key);
       const swapWith = btn.dataset.dir === 'up' ? pos - 1 : pos + 1;
       if(swapWith < 0 || swapWith >= order.length) return;
@@ -1947,21 +2089,26 @@ function renderItinerary(){
   wrap.querySelectorAll('.add-from-explore-btn').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.stopPropagation();
-      showDayPicker(parseInt(btn.dataset.day, 10));
+      showDayPicker(btn.dataset.dayId);
     });
   });
   wrap.querySelectorAll('.d-title-edit').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.stopPropagation();
-      const idx = parseInt(btn.dataset.idx, 10);
-      const day = ITINERARY[idx];
-      const current = (sharedState.dayTitleOverrides && sharedState.dayTitleOverrides[idx]) || day.title;
-      const val = prompt('Day title:', current);
-      if(val === null) return;
-      const clean = val.trim();
-      if(!sharedState.dayTitleOverrides) sharedState.dayTitleOverrides = {};
-      if(clean && clean !== day.title) sharedState.dayTitleOverrides[idx] = clean;
-      else delete sharedState.dayTitleOverrides[idx];
+      showEditDay(btn.dataset.dayId);
+    });
+  });
+  wrap.querySelectorAll('.day-remove').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      if(!confirm('Remove this whole day? This deletes any items, notes, or order set for it and can\'t be undone.')) return;
+      const dayId = btn.dataset.dayId;
+      sharedState.itineraryDays = getItineraryDays().filter(d=>d.id!==dayId);
+      if(sharedState.dayExtras) delete sharedState.dayExtras[dayId];
+      if(sharedState.dayNotes) delete sharedState.dayNotes[dayId];
+      if(sharedState.dayOrder) delete sharedState.dayOrder[dayId];
+      if(sharedState.dayRemoved) delete sharedState.dayRemoved[dayId];
+      if(sharedState.itemNotes) delete sharedState.itemNotes[dayId];
       saveState();
       renderItinerary();
     });
@@ -1969,54 +2116,127 @@ function renderItinerary(){
   wrap.querySelectorAll('.item-note-btn').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.stopPropagation();
-      showItemNotes(parseInt(btn.dataset.day, 10), btn.dataset.key, btn.dataset.name);
+      showItemNotes(btn.dataset.day, btn.dataset.key, btn.dataset.name);
     });
   });
-  function addNoteFromInput(idx){
-    const input = wrap.querySelector(`.day-notes-input[data-day="${idx}"]`);
+  function addNoteFromInput(dayId){
+    const input = wrap.querySelector(`.day-notes-input[data-day-id="${dayId}"]`);
     const text = input.value.trim();
     if(!text) return;
     const name = ensureUserName();
     if(!name) return; // they cancelled the name prompt
     if(!sharedState.dayNotes) sharedState.dayNotes = {};
-    if(!Array.isArray(sharedState.dayNotes[idx])) sharedState.dayNotes[idx] = [];
-    sharedState.dayNotes[idx].push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), author:name, text, ts:Date.now() });
+    if(!Array.isArray(sharedState.dayNotes[dayId])) sharedState.dayNotes[dayId] = [];
+    sharedState.dayNotes[dayId].push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), author:name, text, ts:Date.now() });
     saveState();
     renderItinerary();
   }
   wrap.querySelectorAll('.day-notes-add-btn').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.stopPropagation();
-      addNoteFromInput(parseInt(btn.dataset.day, 10));
+      addNoteFromInput(btn.dataset.dayId);
     });
   });
   wrap.querySelectorAll('.day-notes-input').forEach(input=>{
     input.addEventListener('keydown', e=>{
       if(e.key === 'Enter'){
         e.preventDefault();
-        addNoteFromInput(parseInt(input.dataset.day, 10));
+        addNoteFromInput(input.dataset.dayId);
       }
     });
   });
   wrap.querySelectorAll('.note-remove').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.stopPropagation();
-      const idx = parseInt(btn.dataset.day, 10);
+      const dayId = btn.dataset.dayId;
       const id = btn.dataset.id;
-      if(Array.isArray(sharedState.dayNotes && sharedState.dayNotes[idx])){
-        sharedState.dayNotes[idx] = sharedState.dayNotes[idx].filter(n=>n.id!==id);
+      if(Array.isArray(sharedState.dayNotes && sharedState.dayNotes[dayId])){
+        sharedState.dayNotes[dayId] = sharedState.dayNotes[dayId].filter(n=>n.id!==id);
         saveState();
         renderItinerary();
       }
     });
   });
+  const addDayBtn = document.getElementById('addDayBtn');
+  if(addDayBtn) addDayBtn.addEventListener('click', showAddDay);
   hydrateUnsplashImages();
   observeReveals();
 }
 
-function showDayPicker(dayIdx){
-  const day = ITINERARY[dayIdx];
-  const existingIds = new Set(dayExtrasFor(dayIdx));
+function showAddDay(){
+  const overlay = document.createElement('div');
+  overlay.className = 'surprise-overlay';
+  overlay.innerHTML = `
+    <div class="form-card">
+      <h3>Add a day</h3>
+      <label>Date</label>
+      <input type="text" id="adDate" placeholder="e.g. Mon, Dec 15">
+      <label>City</label>
+      <input type="text" id="adCity" placeholder="Any city name">
+      <label>Title</label>
+      <input type="text" id="adTitle" placeholder="What's the plan for this day?">
+      <div class="form-actions">
+        <button class="btn-cancel" id="adCancel">Cancel</button>
+        <button class="btn-save" id="adSave">Add day</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#adCancel').addEventListener('click', ()=> overlay.remove());
+  overlay.querySelector('#adSave').addEventListener('click', ()=>{
+    const date = overlay.querySelector('#adDate').value.trim();
+    const city = overlay.querySelector('#adCity').value.trim();
+    const title = overlay.querySelector('#adTitle').value.trim();
+    if(!date || !city){ return; }
+    const days = getItineraryDays();
+    const id = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    days.push({ id, date, city, title: title || 'New day', note:'', items:[], lodging:'' });
+    saveState();
+    overlay.remove();
+    renderItinerary();
+  });
+}
+
+function showEditDay(dayId){
+  const days = getItineraryDays();
+  const day = days.find(d=>d.id===dayId);
+  if(!day) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'surprise-overlay';
+  overlay.innerHTML = `
+    <div class="form-card">
+      <h3>Edit day</h3>
+      <label>Date</label>
+      <input type="text" id="edDayDate" value="${escapeHtml(day.date)}">
+      <label>City</label>
+      <input type="text" id="edDayCity" value="${escapeHtml(day.city)}">
+      <label>Title</label>
+      <input type="text" id="edDayTitle" value="${escapeHtml(day.title)}">
+      <label>Note</label>
+      <textarea id="edDayNote">${escapeHtml(day.note||'')}</textarea>
+      <div class="form-actions">
+        <button class="btn-cancel" id="edDayCancel">Cancel</button>
+        <button class="btn-save" id="edDaySave">Save</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#edDayCancel').addEventListener('click', ()=> overlay.remove());
+  overlay.querySelector('#edDaySave').addEventListener('click', ()=>{
+    day.date = overlay.querySelector('#edDayDate').value.trim() || day.date;
+    day.city = overlay.querySelector('#edDayCity').value.trim() || day.city;
+    day.title = overlay.querySelector('#edDayTitle').value.trim() || day.title;
+    day.note = overlay.querySelector('#edDayNote').value.trim();
+    saveState();
+    overlay.remove();
+    renderItinerary();
+  });
+}
+
+function showDayPicker(dayId){
+  const day = getItineraryDays().find(d=>d.id===dayId);
+  if(!day) return;
+  const existingIds = new Set(dayExtrasFor(dayId));
   const overlay = document.createElement('div');
   overlay.className = 'surprise-overlay';
   overlay.innerHTML = `
@@ -2047,8 +2267,8 @@ function showDayPicker(dayIdx){
       row.addEventListener('click', ()=>{
         const id = row.dataset.id;
         if(!sharedState.dayExtras) sharedState.dayExtras = {};
-        if(!sharedState.dayExtras[dayIdx]) sharedState.dayExtras[dayIdx] = [];
-        sharedState.dayExtras[dayIdx].push(id);
+        if(!sharedState.dayExtras[dayId]) sharedState.dayExtras[dayId] = [];
+        sharedState.dayExtras[dayId].push(id);
         saveState();
         overlay.remove();
         renderItinerary();
@@ -2075,12 +2295,19 @@ function observeReveals(){
 /* ---------- Explore render ---------- */
 let activeCat = 'all';
 let searchTerm = '';
-const CITIES = ['Tokyo','Osaka','Kyoto'];
+// Cities are derived from whatever places actually exist (built-in +
+// custom), so this works for any destination, not just Japan's three.
+function getExploreCities(){
+  const set = new Set();
+  allActivities().forEach(a=>{ if(a.city) set.add(a.city); });
+  return Array.from(set);
+}
 
 function renderFilters(){
-  document.getElementById('cityJump').innerHTML = CITIES.map(c=>
-    `<a class="jump-pill jump-${c}" href="#city-${c}">${c}</a>`
-  ).join('');
+  document.getElementById('cityJump').innerHTML = getExploreCities().map(c=>{
+    const clr = cityColorFor(c);
+    return `<a class="jump-pill" style="color:${clr}; border-color:${clr};" href="#city-${c}">${escapeHtml(c)}</a>`;
+  }).join('');
   const cats = ['all', ...Object.keys(CAT_LABEL)];
   document.getElementById('catFilters').innerHTML = cats.map(c=>
     `<button class="chip-btn ${c===activeCat?'active':''}" data-cat="${c}">${c==='all'?'All types':CAT_LABEL[c]}</button>`
@@ -2174,16 +2401,17 @@ function renderExplore(){
   const filtered = pool.filter(matches);
 
   if(activeView === 'active'){
-    wrap.innerHTML = CITIES.map(city=>{
+    wrap.innerHTML = getExploreCities().map(city=>{
       const items = filtered.filter(a=>a.city===city);
       if(items.length===0) return '';
+      const c = cityColorFor(city);
       return `
         <div class="explore-city-section" id="city-${city}">
-          <div class="city-banner reveal city-${city}">
-            <img loading="eager" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(city)} japan skyline" data-cat="activity" onerror="handleImgError(this)" onload="this.style.opacity=1" alt="${city}">
+          <div class="city-banner reveal">
+            <img loading="eager" src="${cityBannerImg(city)}" data-photo-query="${escapeHtml(cityBannerQuery(city))}" data-cat="activity" onerror="handleImgError(this)" onload="this.style.opacity=1" alt="${escapeHtml(city)}">
             <div class="banner-fade"></div>
             <div class="banner-content">
-              <div class="banner-name display">${city}<span class="section-count">${items.length} places</span></div>
+              <div class="banner-name display" style="color:${c};">${escapeHtml(city)}<span class="section-count">${items.length} places</span></div>
             </div>
           </div>
           <div class="grid">${items.map(a=>cardHtml(a,'active')).join('')}</div>
@@ -2275,14 +2503,14 @@ function showAddPlaceForm(){
     reader.onload = (e)=>{
       const img = new Image();
       img.onload = ()=>{
-        const maxW = 640;
+        const maxW = 480;
         const scale = Math.min(1, maxW / img.width);
         const canvas = document.createElement('canvas');
         canvas.width = Math.round(img.width * scale);
         canvas.height = Math.round(img.height * scale);
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        imageDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        imageDataUrl = canvas.toDataURL('image/jpeg', 0.55);
         previewWrap.innerHTML = `<img src="${imageDataUrl}" alt="">`;
       };
       img.src = e.target.result;
@@ -2359,14 +2587,14 @@ function showEditActivity(id){
     reader.onload = (e)=>{
       const img = new Image();
       img.onload = ()=>{
-        const maxW = 640;
+        const maxW = 480;
         const scale = Math.min(1, maxW / img.width);
         const canvas = document.createElement('canvas');
         canvas.width = Math.round(img.width * scale);
         canvas.height = Math.round(img.height * scale);
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        imageDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        imageDataUrl = canvas.toDataURL('image/jpeg', 0.55);
         previewWrap.innerHTML = `<img src="${imageDataUrl}" alt="">`;
       };
       img.src = e.target.result;
@@ -2889,6 +3117,11 @@ function animateNumber(el, toValue, formatFn){
 }
 
 function renderBudget(){
+  const stateSizeBytes = new Blob([JSON.stringify(sharedState)]).size;
+  const stateSizePct = Math.round((stateSizeBytes / FIRESTORE_DOC_LIMIT) * 100);
+  document.getElementById('dataSizeNote').textContent =
+    `Trip data: ${(stateSizeBytes/1024).toFixed(0)}KB of 1024KB synced (${stateSizePct}%)${stateSizePct>80?' — mostly custom photos, consider trimming if you add more':''}`;
+
   const expenses = sharedState.expenses || [];
   const budgetTotal = sharedState.budgetTotal || 0;
   const spent = expenses.reduce((s,e)=>s+e.amount,0);
@@ -2908,14 +3141,16 @@ function renderBudget(){
   // Daily pace — how much per remaining day to stay on budget
   const paceEl = document.getElementById('budgetPace');
   const now = new Date();
+  const tripStart = getTripStart();
+  const tripEnd = getTripEnd();
   let daysLeft;
-  if(now < TRIP_START) daysLeft = Math.round((TRIP_END - TRIP_START)/86400000) + 1;
-  else if(now > TRIP_END) daysLeft = 0;
-  else daysLeft = Math.ceil((TRIP_END - now)/86400000) + 1;
+  if(now < tripStart) daysLeft = Math.round((tripEnd - tripStart)/86400000) + 1;
+  else if(now > tripEnd) daysLeft = 0;
+  else daysLeft = Math.ceil((tripEnd - now)/86400000) + 1;
 
   if(daysLeft > 0){
     const perDay = remaining / daysLeft;
-    const label = now < TRIP_START ? `over all ${daysLeft} trip days` : `over the ${daysLeft} day${daysLeft===1?'':'s'} left`;
+    const label = now < tripStart ? `over all ${daysLeft} trip days` : `over the ${daysLeft} day${daysLeft===1?'':'s'} left`;
     paceEl.classList.toggle('over-pace', perDay < 0);
     paceEl.innerHTML = `≈ <b>${fmtCur(Math.max(0,perDay))}</b>/day ${label}${perDay<0?' — already over budget':''}`;
   } else {
@@ -3064,6 +3299,7 @@ document.getElementById('editBudgetBtn').addEventListener('click', ()=>{
 
 /* ---------- Firestore sync ---------- */
 function renderAll(){
+  renderHeader();
   renderViewTabs();
   renderItinerary();
   renderBudget();
@@ -3099,13 +3335,50 @@ function setSync(status){
 let unsubscribeTrip = null;
 let hasLoadedRemoteState = false; // never save until we've confirmed what's actually there
 
+// A save failing silently is worse than useless — it looks like it worked,
+// then quietly reverts later. This puts an actual banner on screen instead.
+function showSaveError(msg){
+  let banner = document.getElementById('saveErrorBanner');
+  if(!banner){
+    banner = document.createElement('div');
+    banner.id = 'saveErrorBanner';
+    banner.className = 'save-error-banner';
+    document.body.appendChild(banner);
+  }
+  banner.textContent = msg;
+  banner.classList.add('show');
+  clearTimeout(banner._hideTimer);
+  banner._hideTimer = setTimeout(()=> banner.classList.remove('show'), 9000);
+}
+
+// Firestore caps a document at 1MB. Custom photos are the only thing here
+// that can realistically add up that much — this checks before every save
+// so a failure is caught and explained immediately, not discovered later
+// when the data has already quietly reverted.
+const FIRESTORE_DOC_LIMIT = 1048576;
+function checkStateSize(){
+  const byteSize = new Blob([JSON.stringify(sharedState)]).size;
+  if(byteSize > FIRESTORE_DOC_LIMIT * 0.95){
+    showSaveError(`⚠️ Not saved — your trip data (${(byteSize/1024/1024).toFixed(2)}MB) is at Firestore's 1MB document limit. This is almost always custom photos adding up. Remove or replace a photo on a custom place or edited card, then try again.`);
+    return false;
+  }
+  if(byteSize > FIRESTORE_DOC_LIMIT * 0.8){
+    showSaveError(`Heads up: your trip data is getting close to the 1MB sync limit (${(byteSize/1024/1024).toFixed(2)}MB). Saves still work for now, but consider not adding many more custom photos.`);
+  }
+  return true;
+}
+
 function saveState(){
   if(firebaseReady && getTripCode()){
     if(!hasLoadedRemoteState){
       console.warn('Skipped save — still waiting on the real synced data to load, to avoid overwriting it.');
       return;
     }
-    tripDoc().set(sharedState, {merge:true}).catch(e=>console.error('save failed', e));
+    if(!checkStateSize()) return;
+    tripDoc().set(sharedState, {merge:true}).catch(e=>{
+      console.error('save failed', e);
+      showSaveError('⚠️ Save failed — your last change may not have synced. ' + (e && e.message ? e.message : ''));
+    });
   } else {
     localStorage.setItem(LOCAL_KEY, JSON.stringify(sharedState));
   }
@@ -3126,7 +3399,10 @@ function saveField(fieldPath, value){
     update[fieldPath] = (value === null || value === undefined) ? firebase.firestore.FieldValue.delete() : value;
     tripDoc().update(update).catch(e=>{
       if(e && e.code === 'not-found'){ saveState(); }
-      else console.error('field save failed', e);
+      else {
+        console.error('field save failed', e);
+        showSaveError('⚠️ Save failed — your last change may not have synced. ' + (e && e.message ? e.message : ''));
+      }
     });
   } else {
     localStorage.setItem(LOCAL_KEY, JSON.stringify(sharedState));
@@ -3239,6 +3515,7 @@ document.getElementById('expenseForm').addEventListener('submit', (e)=>{
 document.getElementById('expDate').value = new Date().toISOString().slice(0,10);
 
 /* ---------- Init ---------- */
+renderHeader();
 renderItinerary();
 renderFilters();
 renderEstimates();
