@@ -2478,45 +2478,12 @@ function showAddPlaceForm(){
       </div>
       <label>Description</label>
       <textarea id="npNotes" placeholder="What it is, why you want to go..."></textarea>
-      <label>Photo (optional)</label>
-      <div class="file-drop" id="npDrop">
-        <div id="npPreviewWrap">Tap to choose a photo</div>
-        <input type="file" id="npFile" accept="image/*" style="display:none;">
-      </div>
-      <div class="form-hint">Photos are resized and stored in your shared trip data — keep it to a reasonable number of custom photos so syncing stays fast.</div>
       <div class="form-actions">
         <button class="btn-cancel" id="npCancel">Cancel</button>
         <button class="btn-save" id="npSave">Add to Explore</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
-
-  let imageDataUrl = null;
-  const drop = overlay.querySelector('#npDrop');
-  const fileInput = overlay.querySelector('#npFile');
-  const previewWrap = overlay.querySelector('#npPreviewWrap');
-  drop.addEventListener('click', ()=> fileInput.click());
-  fileInput.addEventListener('change', ()=>{
-    const file = fileInput.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = (e)=>{
-      const img = new Image();
-      img.onload = ()=>{
-        const maxW = 480;
-        const scale = Math.min(1, maxW / img.width);
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        imageDataUrl = canvas.toDataURL('image/jpeg', 0.55);
-        previewWrap.innerHTML = `<img src="${imageDataUrl}" alt="">`;
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
 
   overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
   overlay.querySelector('#npCancel').addEventListener('click', ()=> overlay.remove());
@@ -2529,7 +2496,6 @@ function showAddPlaceForm(){
     const notes = overlay.querySelector('#npNotes').value.trim();
     const id = 'custom-' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
     const item = { id, name, city, category, notes, custom:true };
-    if(imageDataUrl) item.customImage = imageDataUrl;
     if(!sharedState.customActivities) sharedState.customActivities = [];
     sharedState.customActivities.push(item);
     saveState();
@@ -2562,11 +2528,6 @@ function showEditActivity(id){
       </div>
       <label>Description</label>
       <textarea id="epNotes">${escapeHtml(item.notes||'')}</textarea>
-      <label>Photo</label>
-      <div class="file-drop" id="epDrop">
-        <div id="epPreviewWrap">${item.customImage ? `<img src="${item.customImage}" alt="">` : 'Tap to choose a photo'}</div>
-        <input type="file" id="epFile" accept="image/*" style="display:none;">
-      </div>
       <div class="form-hint">${isCustom ? 'This is a place you added — changes apply directly.' : "This is one of the curated spots — your edits personalize it for your trip, they don't change the original."}</div>
       <div class="form-actions">
         <button class="btn-cancel" id="epCancel">Cancel</button>
@@ -2574,33 +2535,6 @@ function showEditActivity(id){
       </div>
     </div>`;
   document.body.appendChild(overlay);
-
-  let imageDataUrl = item.customImage || null;
-  const drop = overlay.querySelector('#epDrop');
-  const fileInput = overlay.querySelector('#epFile');
-  const previewWrap = overlay.querySelector('#epPreviewWrap');
-  drop.addEventListener('click', ()=> fileInput.click());
-  fileInput.addEventListener('change', ()=>{
-    const file = fileInput.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = (e)=>{
-      const img = new Image();
-      img.onload = ()=>{
-        const maxW = 480;
-        const scale = Math.min(1, maxW / img.width);
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        imageDataUrl = canvas.toDataURL('image/jpeg', 0.55);
-        previewWrap.innerHTML = `<img src="${imageDataUrl}" alt="">`;
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
 
   overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
   overlay.querySelector('#epCancel').addEventListener('click', ()=> overlay.remove());
@@ -2615,11 +2549,9 @@ function showEditActivity(id){
     if(isCustom){
       const stored = sharedState.customActivities.find(c=>c.id===id);
       stored.name = name; stored.city = city; stored.category = category; stored.notes = notes;
-      if(imageDataUrl) stored.customImage = imageDataUrl;
     } else {
       if(!sharedState.activityOverrides) sharedState.activityOverrides = {};
       const ov = { name, city, category, notes };
-      if(imageDataUrl) ov.customImage = imageDataUrl;
       sharedState.activityOverrides[id] = ov;
     }
     saveState();
