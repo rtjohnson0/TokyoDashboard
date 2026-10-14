@@ -3381,6 +3381,55 @@ function isEmptyVal(v){
     (typeof v === 'object' && !Array.isArray(v) && v !== null && !Object.keys(v).length);
 }
 
+// Before itinerary days got stable IDs, day-scoped data (notes, extras, order,
+// removed items) was filed under the day's NUMBER ("0","1",...) and item keys
+// looked like "s0-2". Days are now "d0","d1",... and item keys "sd0-2". This
+// moves anything still filed under the old keys onto the new ones so nothing
+// saved earlier is orphaned. Safe to run repeatedly (merges by note id, never
+// deletes the old copy).
+function migrateIndexKeys(){
+  const st = sharedState;
+  const FIELDS = ['dayNotes','itemNotes','dayExtras','dayOrder','dayRemoved'];
+  const before = {};
+  FIELDS.forEach(f=> before[f] = stableStringify(st[f] || {}));
+  const fixKey = k => (typeof k === 'string' ? k.replace(/^s(\d+)-(\d+)$/, 'sd$1-$2') : k);
+  const asNotes = v => Array.isArray(v) ? v : (typeof v === 'string' && v ? [{id:'legacy', author:'', text:v, ts:0}] : []);
+  const mergeById = (first, second)=>{
+    const out = first.slice();
+    second.forEach(x=>{ if(!out.some(y=> y && x && y.id === x.id)) out.push(x); });
+    return out;
+  };
+  const uniq = arr => arr.filter((v,i)=> arr.indexOf(v) === i);
+
+  for(let i = 0; i < ITINERARY.length; i++){
+    const oldK = String(i), newK = 'd' + i;
+
+    if(st.dayNotes && st.dayNotes[oldK] !== undefined){
+      const merged = mergeById(asNotes(st.dayNotes[oldK]), asNotes(st.dayNotes[newK]));
+      if(merged.length) st.dayNotes[newK] = merged;
+    }
+    if(st.itemNotes && st.itemNotes[oldK] && typeof st.itemNotes[oldK] === 'object'){
+      Object.keys(st.itemNotes[oldK]).forEach(key=>{
+        const oldList = st.itemNotes[oldK][key];
+        if(!Array.isArray(oldList) || !oldList.length) return;
+        if(!st.itemNotes[newK]) st.itemNotes[newK] = {};
+        const nk = fixKey(key);
+        st.itemNotes[newK][nk] = mergeById(oldList, st.itemNotes[newK][nk] || []);
+      });
+    }
+    if(st.dayExtras && Array.isArray(st.dayExtras[oldK]) && st.dayExtras[oldK].length){
+      st.dayExtras[newK] = uniq([...st.dayExtras[oldK], ...(st.dayExtras[newK] || [])]);
+    }
+    if(st.dayOrder && Array.isArray(st.dayOrder[oldK]) && !st.dayOrder[newK]){
+      st.dayOrder[newK] = st.dayOrder[oldK].map(fixKey);
+    }
+    if(st.dayRemoved && Array.isArray(st.dayRemoved[oldK]) && st.dayRemoved[oldK].length){
+      st.dayRemoved[newK] = uniq([...st.dayRemoved[oldK].map(fixKey), ...(st.dayRemoved[newK] || [])]);
+    }
+  }
+  return FIELDS.filter(f=> stableStringify(st[f] || {}) !== before[f]);
+}
+
 async function runDatabaseCheck(){
   const kb = b => Math.round(b/1024) + ' KB';
   const sizeOf = v => new Blob([JSON.stringify(v)]).size;
@@ -3485,6 +3534,7 @@ function connectToTrip(){
       try{ sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], itemNotes:{}, dayTitleOverrides:{}, budgetTotal:4000, packing:null}, JSON.parse(cached)); }catch(e){}
     }
     hasLoadedRemoteState = true;
+    try{ if(migrateIndexKeys().length) localStorage.setItem(LOCAL_KEY, JSON.stringify(sharedState)); }catch(e){}
     renderAll();
     return;
   }
@@ -3499,6 +3549,15 @@ function connectToTrip(){
     if(doc.exists){
       sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], itemNotes:{}, dayTitleOverrides:{}, budgetTotal:4000, packing:null}, doc.data());
       hasLoadedRemoteState = true;
+      // Self-heal: bring back notes/extras filed under the old numeric day keys.
+      try{
+        const migrated = migrateIndexKeys();
+        if(migrated.length){
+          const upd = {};
+          migrated.forEach(f=>{ upd[f] = sharedState[f]; });
+          tripDoc().update(upd).catch(e=> console.error('migration save failed', e));
+        }
+      }catch(e){ console.error('migration failed', e); }
       // Self-heal: drop the old huge uploaded photos so saving works again.
       if(countEmbeddedPhotos(sharedState) > 0 && !snapCleanInFlight){
         snapCleanInFlight = true;
