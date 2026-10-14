@@ -1306,6 +1306,10 @@ function showTripSettings(){
         <div><label>End date</label><input type="date" id="tsEnd" value="${ts.endDate}"></div>
       </div>
       <div class="form-hint">Changing dates updates the countdown and budget pacing. To fully switch to a new destination for a future trip, also set a new trip code (Budget tab) for a clean slate, and add/remove days below in Itinerary.</div>
+      <label style="margin-top:14px;">Database check</label>
+      <button type="button" class="btn-cancel" id="tsDbCheck" style="width:100%;">Run database check</button>
+      <div id="tsDbOut" style="display:none; margin-top:8px; font-size:12px; line-height:1.5; white-space:pre-wrap; opacity:.9;"></div>
+      <button type="button" class="btn-cancel" id="tsDbClean" style="width:100%; margin-top:8px; display:none;">Remove old uploaded photos</button>
       <div class="form-actions">
         <button class="btn-cancel" id="tsCancel">Cancel</button>
         <button class="btn-save" id="tsSave">Save</button>
@@ -1314,6 +1318,23 @@ function showTripSettings(){
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
   overlay.querySelector('#tsCancel').addEventListener('click', ()=> overlay.remove());
+  const dbOut = overlay.querySelector('#tsDbOut');
+  const dbClean = overlay.querySelector('#tsDbClean');
+  const runCheck = async ()=>{
+    dbOut.style.display = 'block';
+    dbOut.textContent = 'Checking…';
+    const res = await runDatabaseCheck();
+    dbOut.textContent = res.text;
+    dbClean.style.display = res.photos > 0 ? 'block' : 'none';
+  };
+  overlay.querySelector('#tsDbCheck').addEventListener('click', runCheck);
+  dbClean.addEventListener('click', async ()=>{
+    dbClean.disabled = true;
+    try{ await cleanAndPushPhotos(); }catch(e){ console.error(e); }
+    dbClean.disabled = false;
+    renderAll();
+    runCheck();
+  });
   overlay.querySelector('#tsSave').addEventListener('click', ()=>{
     const title = overlay.querySelector('#tsTitle').value.trim() || ts.title;
     const kicker = overlay.querySelector('#tsKicker').value.trim() || ts.kicker;
@@ -2478,6 +2499,8 @@ function showAddPlaceForm(){
       </div>
       <label>Description</label>
       <textarea id="npNotes" placeholder="What it is, why you want to go..."></textarea>
+      <label>Photo link (optional)</label>
+      <input type="url" id="npImg" placeholder="https://... (paste an image link)">
       <div class="form-actions">
         <button class="btn-cancel" id="npCancel">Cancel</button>
         <button class="btn-save" id="npSave">Add to Explore</button>
@@ -2496,6 +2519,8 @@ function showAddPlaceForm(){
     const notes = overlay.querySelector('#npNotes').value.trim();
     const id = 'custom-' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
     const item = { id, name, city, category, notes, custom:true };
+    const imgLink = overlay.querySelector('#npImg').value.trim();
+    if(/^https?:\/\//i.test(imgLink)) item.customImage = imgLink;
     if(!sharedState.customActivities) sharedState.customActivities = [];
     sharedState.customActivities.push(item);
     saveState();
@@ -2528,6 +2553,8 @@ function showEditActivity(id){
       </div>
       <label>Description</label>
       <textarea id="epNotes">${escapeHtml(item.notes||'')}</textarea>
+      <label>Photo link (optional)</label>
+      <input type="url" id="epImg" placeholder="https://... (paste an image link)" value="${escapeHtml(/^https?:/i.test(item.customImage||'') ? item.customImage : '')}">
       <div class="form-hint">${isCustom ? 'This is a place you added — changes apply directly.' : "This is one of the curated spots — your edits personalize it for your trip, they don't change the original."}</div>
       <div class="form-actions">
         <button class="btn-cancel" id="epCancel">Cancel</button>
@@ -2546,12 +2573,24 @@ function showEditActivity(id){
     const category = overlay.querySelector('#epCategory').value;
     const notes = overlay.querySelector('#epNotes').value.trim();
 
+    // Photo link: a pasted http(s) link replaces the photo; clearing the box removes a link.
+    // An old uploaded (data:) photo is left alone unless a new link is pasted.
+    const imgLink = overlay.querySelector('#epImg').value.trim();
+    const hasLink = /^https?:\/\//i.test(imgLink);
+    const existing = item.customImage || '';
+    const existingIsData = existing.startsWith('data:');
+    let newImage = existing;
+    if(hasLink) newImage = imgLink;
+    else if(!existingIsData) newImage = '';
+
     if(isCustom){
       const stored = sharedState.customActivities.find(c=>c.id===id);
       stored.name = name; stored.city = city; stored.category = category; stored.notes = notes;
+      if(newImage) stored.customImage = newImage; else delete stored.customImage;
     } else {
       if(!sharedState.activityOverrides) sharedState.activityOverrides = {};
       const ov = { name, city, category, notes };
+      if(newImage) ov.customImage = newImage;
       sharedState.activityOverrides[id] = ov;
     }
     saveState();
@@ -3266,6 +3305,7 @@ function setSync(status){
 
 let unsubscribeTrip = null;
 let hasLoadedRemoteState = false; // never save until we've confirmed what's actually there
+let snapCleanInFlight = false;
 
 // A save failing silently is worse than useless — it looks like it worked,
 // then quietly reverts later. This puts an actual banner on screen instead.
@@ -3291,13 +3331,105 @@ const FIRESTORE_DOC_LIMIT = 1048576;
 function checkStateSize(){
   const byteSize = new Blob([JSON.stringify(sharedState)]).size;
   if(byteSize > FIRESTORE_DOC_LIMIT * 0.95){
-    showSaveError(`⚠️ Not saved — your trip data (${(byteSize/1024/1024).toFixed(2)}MB) is at Firestore's 1MB document limit. This is almost always custom photos adding up. Remove or replace a photo on a custom place or edited card, then try again.`);
+    showSaveError(`⚠️ Not saved — your trip data (${(byteSize/1024/1024).toFixed(2)}MB) is at the 1MB sync limit. Open Trip settings (gear icon) → Database check → Remove old uploaded photos.`);
     return false;
   }
   if(byteSize > FIRESTORE_DOC_LIMIT * 0.8){
-    showSaveError(`Heads up: your trip data is getting close to the 1MB sync limit (${(byteSize/1024/1024).toFixed(2)}MB). Saves still work for now, but consider not adding many more custom photos.`);
+    console.warn('Trip data is over 80% of the 1MB sync limit:', byteSize);
   }
   return true;
+}
+
+// Old uploaded photos were stored as huge base64 text inside the shared
+// document. That is what filled it up. Links (https://...) are tiny and kept.
+function isEmbeddedPhoto(v){ return typeof v === 'string' && v.startsWith('data:'); }
+function countEmbeddedPhotos(st){
+  let n = 0;
+  (st.customActivities||[]).forEach(a=>{ if(a && isEmbeddedPhoto(a.customImage)) n++; });
+  Object.values(st.activityOverrides||{}).forEach(o=>{ if(o && isEmbeddedPhoto(o.customImage)) n++; });
+  return n;
+}
+function stripEmbeddedPhotos(st){
+  let n = 0;
+  (st.customActivities||[]).forEach(a=>{ if(a && isEmbeddedPhoto(a.customImage)){ delete a.customImage; n++; } });
+  const ovs = st.activityOverrides || {};
+  Object.keys(ovs).forEach(k=>{ const o = ovs[k]; if(o && isEmbeddedPhoto(o.customImage)){ delete o.customImage; n++; } });
+  return n;
+}
+// Removes the embedded photos and writes only those two fields back (small
+// targeted write — shrinks the document without touching anything else).
+function cleanAndPushPhotos(){
+  const n = stripEmbeddedPhotos(sharedState);
+  if(!n) return Promise.resolve(0);
+  if(firebaseReady && getTripCode() && hasLoadedRemoteState){
+    return tripDoc().update({
+      customActivities: sharedState.customActivities || [],
+      activityOverrides: sharedState.activityOverrides || {}
+    }).then(()=> n);
+  }
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(sharedState));
+  return Promise.resolve(n);
+}
+
+function stableStringify(v){
+  if(v === null || typeof v !== 'object') return JSON.stringify(v);
+  if(Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
+  return '{' + Object.keys(v).sort().map(k=> JSON.stringify(k)+':'+stableStringify(v[k])).join(',') + '}';
+}
+function isEmptyVal(v){
+  return v === undefined || v === null || (Array.isArray(v) && !v.length) ||
+    (typeof v === 'object' && !Array.isArray(v) && v !== null && !Object.keys(v).length);
+}
+
+async function runDatabaseCheck(){
+  const kb = b => Math.round(b/1024) + ' KB';
+  const sizeOf = v => new Blob([JSON.stringify(v)]).size;
+  const lines = [];
+  let photos = countEmbeddedPhotos(sharedState);
+  const localSize = sizeOf(sharedState);
+  lines.push(`This device: ${kb(localSize)} of 1024 KB (${Math.round(localSize/FIRESTORE_DOC_LIMIT*100)}%)`);
+
+  if(!firebaseReady || !getTripCode()){
+    lines.push('Not connected to a trip code, so data is only stored on this device.');
+    return { text: lines.join('\n'), photos };
+  }
+  try{
+    const snap = await tripDoc().get({source:'server'});
+    if(!snap.exists){
+      lines.push('Server: no saved data found for this trip code.');
+      return { text: lines.join('\n'), photos };
+    }
+    const remote = snap.data();
+    const remoteSize = sizeOf(remote);
+    const remotePhotos = countEmbeddedPhotos(remote);
+    photos = Math.max(photos, remotePhotos);
+    lines.push(`Server copy: ${kb(remoteSize)} of 1024 KB (${Math.round(remoteSize/FIRESTORE_DOC_LIMIT*100)}%)`);
+    lines.push(`Old uploaded photos still stored: ${remotePhotos}`);
+    const big = Object.keys(remote).map(k=>[k, sizeOf(remote[k])]).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    lines.push('Biggest sections: ' + big.map(([k,b])=> `${k} ${kb(b)}`).join(', '));
+
+    const keys = new Set([...Object.keys(remote), ...Object.keys(sharedState)]);
+    const diff = [...keys].filter(k=>{
+      const a = remote[k], b = sharedState[k];
+      if(isEmptyVal(a) && isEmptyVal(b)) return false;
+      return stableStringify(a) !== stableStringify(b);
+    });
+    if(diff.length){
+      lines.push(`Differs from server: ${diff.join(', ')}`);
+      lines.push('→ This device has changes that did not reach the server (or are still syncing). Wait a few seconds and run the check again.');
+    } else {
+      lines.push('This device matches the server. Everything shown here is saved.');
+    }
+    if(remoteSize > FIRESTORE_DOC_LIMIT * 0.95){
+      lines.push('⚠️ Server data is too big to accept new saves. Tap "Remove old uploaded photos".');
+    } else {
+      lines.push('✅ Saving is working: there is room for new changes.');
+    }
+  }catch(e){
+    console.error(e);
+    lines.push('Could not reach the server: ' + (e && e.message ? e.message : e));
+  }
+  return { text: lines.join('\n'), photos };
 }
 
 function saveState(){
@@ -3367,6 +3499,11 @@ function connectToTrip(){
     if(doc.exists){
       sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], itemNotes:{}, dayTitleOverrides:{}, budgetTotal:4000, packing:null}, doc.data());
       hasLoadedRemoteState = true;
+      // Self-heal: drop the old huge uploaded photos so saving works again.
+      if(countEmbeddedPhotos(sharedState) > 0 && !snapCleanInFlight){
+        snapCleanInFlight = true;
+        cleanAndPushPhotos().catch(e=> console.error('photo cleanup failed', e)).then(()=>{ snapCleanInFlight = false; });
+      }
     } else if(!hasLoadedRemoteState){
       // Only true the very first time this trip code is ever used — never
       // re-initialize over data that already exists.
