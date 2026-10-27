@@ -2254,10 +2254,80 @@ function showEditDay(dayId){
   });
 }
 
+/* Small confirmation message at the bottom of the screen */
+function showToast(msg){
+  let t = document.getElementById('miniToast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'miniToast';
+    t.style.cssText = 'position:fixed; left:50%; bottom:90px; transform:translateX(-50%); z-index:9999; background:var(--jade,#3FBF8F); color:#062016; font-weight:600; padding:10px 16px; border-radius:999px; font-size:14px; box-shadow:0 6px 24px rgba(0,0,0,.4); max-width:90vw; text-align:center; transition:opacity .25s; opacity:0; pointer-events:none;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>{ t.style.opacity = '0'; }, 2600);
+}
+
+// The one place that puts a place onto a day. It also clears any earlier
+// "removed from this day" mark for it — otherwise a place you removed once
+// would stay hidden forever even after you add it back.
+function addPlaceToDay(placeId, dayId){
+  if(!sharedState.dayExtras) sharedState.dayExtras = {};
+  if(!sharedState.dayExtras[dayId]) sharedState.dayExtras[dayId] = [];
+  if(!sharedState.dayExtras[dayId].includes(placeId)) sharedState.dayExtras[dayId].push(placeId);
+  if(sharedState.dayRemoved && Array.isArray(sharedState.dayRemoved[dayId])){
+    sharedState.dayRemoved[dayId] = sharedState.dayRemoved[dayId].filter(k=> k !== placeId);
+  }
+  saveState();
+  renderItinerary();
+}
+
+// From an Explore card: pick which day of the trip to put this place on.
+function showAddToDay(placeId){
+  const place = allActivities().find(a=>a.id===placeId);
+  if(!place) return;
+  const days = getItineraryDays().filter(d=> d.city !== 'Travel');
+  const overlay = document.createElement('div');
+  overlay.className = 'surprise-overlay';
+  const rows = days.map(d=>{
+    const already = getDayEntries(d).some(e=> e.key === placeId || (e.match && e.match.id === placeId));
+    const c = cityColorFor(d.city);
+    return `<div class="picker-row" data-day-id="${d.id}" style="${already?'opacity:.55;':''}">
+      <span class="city-chip" style="color:${c}; border-color:${c}; background:${c}14; flex-shrink:0;">${escapeHtml(d.city)}</span>
+      <span class="pr-name">${escapeHtml(d.date)} · ${escapeHtml(d.title)}</span>
+      <span class="pr-city">${already ? '✓ added' : (d.city === place.city ? 'same city' : '')}</span>
+    </div>`;
+  }).join('') || '<div class="empty">No days in the itinerary yet. Add a day on the Itinerary tab first.</div>';
+  overlay.innerHTML = `
+    <div class="form-card">
+      <h3>Add "${escapeHtml(place.name)}" to a day</h3>
+      <div class="picker-list">${rows}</div>
+      <div class="form-actions"><button class="btn-cancel" id="addDayClose">Close</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#addDayClose').addEventListener('click', ()=> overlay.remove());
+  overlay.querySelectorAll('.picker-row[data-day-id]').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const day = days.find(d=>d.id === row.dataset.dayId);
+      if(!day) return;
+      if(getDayEntries(day).some(e=> e.key === placeId || (e.match && e.match.id === placeId))){
+        showToast('Already on ' + day.date);
+        return;
+      }
+      addPlaceToDay(placeId, day.id);
+      overlay.remove();
+      showToast('Added to ' + day.date + ' ✓');
+    });
+  });
+}
+
 function showDayPicker(dayId){
   const day = getItineraryDays().find(d=>d.id===dayId);
   if(!day) return;
-  const existingIds = new Set(dayExtrasFor(dayId));
+  const existingIds = new Set();
+  getDayEntries(day).forEach(e=>{ existingIds.add(e.key); if(e.match) existingIds.add(e.match.id); });
   const overlay = document.createElement('div');
   overlay.className = 'surprise-overlay';
   overlay.innerHTML = `
@@ -2277,7 +2347,7 @@ function showDayPicker(dayId){
       return true;
     }).sort((a,b)=> (a.city===day.city ? -1 : 0) - (b.city===day.city ? -1 : 0));
     const list = overlay.querySelector('#pickerList');
-    list.innerHTML = pool.slice(0, 60).map(a=>`
+    list.innerHTML = pool.map(a=>`
       <div class="picker-row" data-id="${a.id}">
         <img loading="eager" src="${imgFor(a)}" ${photoQueryAttr(a)} data-cat="${a.category}" onerror="handleImgError(this)" onload="this.style.opacity=1" alt="">
         <span class="pr-name">${escapeHtml(a.name)}</span>
@@ -2287,12 +2357,8 @@ function showDayPicker(dayId){
     list.querySelectorAll('.picker-row').forEach(row=>{
       row.addEventListener('click', ()=>{
         const id = row.dataset.id;
-        if(!sharedState.dayExtras) sharedState.dayExtras = {};
-        if(!sharedState.dayExtras[dayId]) sharedState.dayExtras[dayId] = [];
-        sharedState.dayExtras[dayId].push(id);
-        saveState();
+        addPlaceToDay(id, dayId);
         overlay.remove();
-        renderItinerary();
       });
     });
     hydrateUnsplashImages();
@@ -2360,6 +2426,7 @@ function cardHtml(a, view){
   const cal = gcalUrl(a);
   let actions = `<a class="map-link" target="_blank" rel="noopener" href="${mapUrl(a)}">Open map</a>`;
   if(view === 'active'){
+    actions += `<button class="icon-btn addday" data-id="${a.id}" data-action="addday" title="Add to a day in the itinerary">📅</button>`;
     actions += `<button class="icon-btn complete" data-id="${a.id}" data-action="complete" title="Mark done">✓</button>`;
     actions += `<button class="icon-btn archive" data-id="${a.id}" data-action="archive" title="Archive">🗄</button>`;
   } else if(view === 'completed'){
@@ -2448,6 +2515,7 @@ function renderExplore(){
     btn.addEventListener('click', ()=>{
       const id = btn.dataset.id;
       const action = btn.dataset.action;
+      if(action === 'addday'){ showAddToDay(id); return; }
       if(action === 'complete') setStatus(id, 'completed');
       else if(action === 'archive') setStatus(id, 'archived');
       else if(action === 'restore') setStatus(id, 'active');
