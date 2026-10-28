@@ -1280,6 +1280,16 @@ function getTripSettings(){
 }
 function getTripStart(){ return new Date(getTripSettings().startDate + 'T00:00:00'); }
 function getTripEnd(){ return new Date(getTripSettings().endDate + 'T23:59:59'); }
+// Whole number of trip days, counted by calendar date (start and end both included).
+function tripTotalDays(){
+  const ts = getTripSettings();
+  const a = new Date(ts.startDate + 'T00:00:00'), b = new Date(ts.endDate + 'T00:00:00');
+  return Math.max(1, Math.round((b - a)/86400000) + 1);
+}
+function ymd(dt){
+  const p = n => String(n).padStart(2,'0');
+  return dt.getFullYear() + '-' + p(dt.getMonth()+1) + '-' + p(dt.getDate());
+}
 
 function renderHeader(){
   const ts = getTripSettings();
@@ -1938,7 +1948,7 @@ function showItemNotes(dayId, key, itemName){
     overlay.querySelectorAll('.note-remove').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         sharedState.itemNotes[dayId][key] = sharedState.itemNotes[dayId][key].filter(n=>n.id!==btn.dataset.id);
-        saveState();
+        saveField('itemNotes.'+dayId+'.'+key, sharedState.itemNotes[dayId][key]);
         render();
         renderItinerary();
       });
@@ -1954,7 +1964,7 @@ function showItemNotes(dayId, key, itemName){
       if(!sharedState.itemNotes[dayId]) sharedState.itemNotes[dayId] = {};
       if(!sharedState.itemNotes[dayId][key]) sharedState.itemNotes[dayId][key] = [];
       sharedState.itemNotes[dayId][key].push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), author:name, text, ts:Date.now() });
-      saveState();
+      saveField('itemNotes.'+dayId+'.'+key, sharedState.itemNotes[dayId][key]);
       render();
       renderItinerary();
     };
@@ -1999,7 +2009,7 @@ function renderTripStatus(){
   const el = document.getElementById('tripStatus');
   const tripStart = getTripStart();
   const tripEnd = getTripEnd();
-  const totalDays = Math.round((tripEnd - tripStart)/86400000) + 1;
+  const totalDays = tripTotalDays();
   const now = new Date();
   let html = '';
   if(now < tripStart){
@@ -2037,7 +2047,8 @@ function renderItinerary(){
   let lastCity = null;
   days.forEach((day, i)=>{
     if(day.city === 'Travel'){
-      html += connectorHtml(day);
+      // Travel days are full day cards too, so places/notes can be added to them
+      html += dayCardHtml(day, i===0);
       lastCity = null; // force next real city to show a fresh banner
       return;
     }
@@ -2085,7 +2096,7 @@ function renderItinerary(){
       if(!sharedState.dayRemoved) sharedState.dayRemoved = {};
       if(!sharedState.dayRemoved[dayId]) sharedState.dayRemoved[dayId] = [];
       sharedState.dayRemoved[dayId].push(key);
-      saveState();
+      saveField('dayRemoved.'+dayId, sharedState.dayRemoved[dayId]);
       renderItinerary();
     });
   });
@@ -2149,7 +2160,7 @@ function renderItinerary(){
     if(!sharedState.dayNotes) sharedState.dayNotes = {};
     if(!Array.isArray(sharedState.dayNotes[dayId])) sharedState.dayNotes[dayId] = [];
     sharedState.dayNotes[dayId].push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), author:name, text, ts:Date.now() });
-    saveState();
+    saveField('dayNotes.'+dayId, sharedState.dayNotes[dayId]);
     renderItinerary();
   }
   wrap.querySelectorAll('.day-notes-add-btn').forEach(btn=>{
@@ -2173,7 +2184,7 @@ function renderItinerary(){
       const id = btn.dataset.id;
       if(Array.isArray(sharedState.dayNotes && sharedState.dayNotes[dayId])){
         sharedState.dayNotes[dayId] = sharedState.dayNotes[dayId].filter(n=>n.id!==id);
-        saveState();
+        saveField('dayNotes.'+dayId, sharedState.dayNotes[dayId]);
         renderItinerary();
       }
     });
@@ -2276,10 +2287,16 @@ function addPlaceToDay(placeId, dayId){
   if(!sharedState.dayExtras) sharedState.dayExtras = {};
   if(!sharedState.dayExtras[dayId]) sharedState.dayExtras[dayId] = [];
   if(!sharedState.dayExtras[dayId].includes(placeId)) sharedState.dayExtras[dayId].push(placeId);
+  let clearedRemoved = false;
   if(sharedState.dayRemoved && Array.isArray(sharedState.dayRemoved[dayId])){
-    sharedState.dayRemoved[dayId] = sharedState.dayRemoved[dayId].filter(k=> k !== placeId);
+    const kept = sharedState.dayRemoved[dayId].filter(k=> k !== placeId);
+    clearedRemoved = kept.length !== sharedState.dayRemoved[dayId].length;
+    sharedState.dayRemoved[dayId] = kept;
   }
-  saveState();
+  // Write only these two small fields (not the whole trip document), so a
+  // stale copy on the other phone can't overwrite the add.
+  saveField('dayExtras.'+dayId, sharedState.dayExtras[dayId]);
+  if(clearedRemoved) saveField('dayRemoved.'+dayId, sharedState.dayRemoved[dayId]);
   renderItinerary();
 }
 
@@ -2287,7 +2304,7 @@ function addPlaceToDay(placeId, dayId){
 function showAddToDay(placeId){
   const place = allActivities().find(a=>a.id===placeId);
   if(!place) return;
-  const days = getItineraryDays().filter(d=> d.city !== 'Travel');
+  const days = getItineraryDays();
   const overlay = document.createElement('div');
   overlay.className = 'surprise-overlay';
   const rows = days.map(d=>{
@@ -3182,19 +3199,28 @@ function renderBudget(){
   const now = new Date();
   const tripStart = getTripStart();
   const tripEnd = getTripEnd();
+  const totalDays = tripTotalDays();
   let daysLeft;
-  if(now < tripStart) daysLeft = Math.round((tripEnd - tripStart)/86400000) + 1;
+  if(now < tripStart) daysLeft = totalDays;
   else if(now > tripEnd) daysLeft = 0;
-  else daysLeft = Math.ceil((tripEnd - now)/86400000) + 1;
+  else {
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const elapsed = Math.round((todayMidnight - tripStart)/86400000); // full days before today
+    daysLeft = Math.max(1, totalDays - elapsed);
+  }
 
+  const daysBtn = `<button type="button" id="paceDaysBtn" style="background:none; border:1px solid currentColor; color:inherit; border-radius:999px; padding:2px 10px; font-size:12px; cursor:pointer; opacity:.85; margin-left:6px;">✎ Edit days</button>`;
   if(daysLeft > 0){
     const perDay = remaining / daysLeft;
     const label = now < tripStart ? `over all ${daysLeft} trip days` : `over the ${daysLeft} day${daysLeft===1?'':'s'} left`;
     paceEl.classList.toggle('over-pace', perDay < 0);
-    paceEl.innerHTML = `≈ <b>${fmtCur(Math.max(0,perDay))}</b>/day ${label}${perDay<0?' — already over budget':''}`;
+    paceEl.innerHTML = `≈ <b>${fmtCur(Math.max(0,perDay))}</b>/day ${label}${perDay<0?' — already over budget':''} ${daysBtn}`;
   } else {
-    paceEl.textContent = '';
+    paceEl.classList.remove('over-pace');
+    paceEl.innerHTML = `Trip is over. ${daysBtn}`;
   }
+  const paceBtn = document.getElementById('paceDaysBtn');
+  if(paceBtn) paceBtn.addEventListener('click', showBudgetDays);
 
   // Category breakdown
   const breakdown = document.getElementById('categoryBreakdown');
@@ -3279,6 +3305,44 @@ function renderBudget(){
       });
     });
   }
+}
+
+// Change the length of the trip right from the Budget tab. The budget pace,
+// the countdown and the header dates all follow the same start/end dates.
+function showBudgetDays(){
+  const ts = getTripSettings();
+  const overlay = document.createElement('div');
+  overlay.className = 'surprise-overlay';
+  overlay.innerHTML = `
+    <div class="form-card">
+      <h3>Trip length</h3>
+      <div class="row2">
+        <div><label>First day</label><input type="date" id="bdStart" value="${ts.startDate}"></div>
+        <div><label>Number of days</label><input type="number" id="bdDays" min="1" max="365" value="${tripTotalDays()}"></div>
+      </div>
+      <div class="form-hint" id="bdHint"></div>
+      <div class="form-actions">
+        <button class="btn-cancel" id="bdCancel">Cancel</button>
+        <button class="btn-save" id="bdSave">Save</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const startEl = overlay.querySelector('#bdStart'), daysEl = overlay.querySelector('#bdDays'), hint = overlay.querySelector('#bdHint');
+  const endFor = ()=>{
+    const [y,m,d] = (startEl.value || ts.startDate).split('-').map(Number);
+    const n = Math.max(1, Math.min(365, parseInt(daysEl.value,10) || 1));
+    return new Date(y, m-1, d + n - 1);
+  };
+  const refresh = ()=>{ hint.textContent = 'Last day: ' + endFor().toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric', year:'numeric'}); };
+  startEl.addEventListener('input', refresh); daysEl.addEventListener('input', refresh); refresh();
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#bdCancel').addEventListener('click', ()=> overlay.remove());
+  overlay.querySelector('#bdSave').addEventListener('click', ()=>{
+    sharedState.tripSettings = Object.assign({}, getTripSettings(), { startDate: startEl.value || ts.startDate, endDate: ymd(endFor()) });
+    saveField('tripSettings', sharedState.tripSettings);
+    overlay.remove();
+    renderHeader(); renderItinerary(); renderBudget();
+  });
 }
 
 function showEditExpense(idx){
@@ -3451,51 +3515,64 @@ function isEmptyVal(v){
 
 // Before itinerary days got stable IDs, day-scoped data (notes, extras, order,
 // removed items) was filed under the day's NUMBER ("0","1",...) and item keys
-// looked like "s0-2". Days are now "d0","d1",... and item keys "sd0-2". This
-// moves anything still filed under the old keys onto the new ones so nothing
-// saved earlier is orphaned. Safe to run repeatedly (merges by note id, never
-// deletes the old copy).
+// looked like "s0-2". Days are now "d0","d1",... and item keys "sd0-2".
+// This moves anything still filed under the old keys onto the new ones ONCE,
+// then deletes the old copies and sets a flag. It must be one-time: if the old
+// copies stayed around and kept being re-merged, a note you deleted would come
+// back and a place you re-added could be hidden again.
+// If a day already has data under its new key, that is treated as the truth and
+// the old copy is simply dropped.
 function migrateIndexKeys(){
   const st = sharedState;
+  if(st.indexKeysMigrated) return [];
   const FIELDS = ['dayNotes','itemNotes','dayExtras','dayOrder','dayRemoved'];
   const before = {};
   FIELDS.forEach(f=> before[f] = stableStringify(st[f] || {}));
   const fixKey = k => (typeof k === 'string' ? k.replace(/^s(\d+)-(\d+)$/, 'sd$1-$2') : k);
   const asNotes = v => Array.isArray(v) ? v : (typeof v === 'string' && v ? [{id:'legacy', author:'', text:v, ts:0}] : []);
-  const mergeById = (first, second)=>{
-    const out = first.slice();
-    second.forEach(x=>{ if(!out.some(y=> y && x && y.id === x.id)) out.push(x); });
-    return out;
-  };
-  const uniq = arr => arr.filter((v,i)=> arr.indexOf(v) === i);
 
   for(let i = 0; i < ITINERARY.length; i++){
     const oldK = String(i), newK = 'd' + i;
 
     if(st.dayNotes && st.dayNotes[oldK] !== undefined){
-      const merged = mergeById(asNotes(st.dayNotes[oldK]), asNotes(st.dayNotes[newK]));
-      if(merged.length) st.dayNotes[newK] = merged;
+      if(st.dayNotes[newK] === undefined){
+        const notes = asNotes(st.dayNotes[oldK]);
+        if(notes.length) st.dayNotes[newK] = notes;
+      }
+      delete st.dayNotes[oldK];
     }
-    if(st.itemNotes && st.itemNotes[oldK] && typeof st.itemNotes[oldK] === 'object'){
-      Object.keys(st.itemNotes[oldK]).forEach(key=>{
-        const oldList = st.itemNotes[oldK][key];
-        if(!Array.isArray(oldList) || !oldList.length) return;
-        if(!st.itemNotes[newK]) st.itemNotes[newK] = {};
-        const nk = fixKey(key);
-        st.itemNotes[newK][nk] = mergeById(oldList, st.itemNotes[newK][nk] || []);
-      });
+    if(st.itemNotes && st.itemNotes[oldK] !== undefined){
+      if(st.itemNotes[newK] === undefined && st.itemNotes[oldK] && typeof st.itemNotes[oldK] === 'object'){
+        const moved = {};
+        Object.keys(st.itemNotes[oldK]).forEach(key=>{
+          const list = st.itemNotes[oldK][key];
+          if(Array.isArray(list) && list.length) moved[fixKey(key)] = list;
+        });
+        if(Object.keys(moved).length) st.itemNotes[newK] = moved;
+      }
+      delete st.itemNotes[oldK];
     }
-    if(st.dayExtras && Array.isArray(st.dayExtras[oldK]) && st.dayExtras[oldK].length){
-      st.dayExtras[newK] = uniq([...st.dayExtras[oldK], ...(st.dayExtras[newK] || [])]);
+    if(st.dayExtras && st.dayExtras[oldK] !== undefined){
+      if(st.dayExtras[newK] === undefined && Array.isArray(st.dayExtras[oldK]) && st.dayExtras[oldK].length){
+        st.dayExtras[newK] = st.dayExtras[oldK].slice();
+      }
+      delete st.dayExtras[oldK];
     }
-    if(st.dayOrder && Array.isArray(st.dayOrder[oldK]) && !st.dayOrder[newK]){
-      st.dayOrder[newK] = st.dayOrder[oldK].map(fixKey);
+    if(st.dayOrder && st.dayOrder[oldK] !== undefined){
+      if(st.dayOrder[newK] === undefined && Array.isArray(st.dayOrder[oldK])){
+        st.dayOrder[newK] = st.dayOrder[oldK].map(fixKey);
+      }
+      delete st.dayOrder[oldK];
     }
-    if(st.dayRemoved && Array.isArray(st.dayRemoved[oldK]) && st.dayRemoved[oldK].length){
-      st.dayRemoved[newK] = uniq([...st.dayRemoved[oldK].map(fixKey), ...(st.dayRemoved[newK] || [])]);
+    if(st.dayRemoved && st.dayRemoved[oldK] !== undefined){
+      if(st.dayRemoved[newK] === undefined && Array.isArray(st.dayRemoved[oldK]) && st.dayRemoved[oldK].length){
+        st.dayRemoved[newK] = st.dayRemoved[oldK].map(fixKey);
+      }
+      delete st.dayRemoved[oldK];
     }
   }
-  return FIELDS.filter(f=> stableStringify(st[f] || {}) !== before[f]);
+  st.indexKeysMigrated = true;
+  return FIELDS.filter(f=> stableStringify(st[f] || {}) !== before[f]).concat(['indexKeysMigrated']);
 }
 
 async function runDatabaseCheck(){
@@ -3578,7 +3655,7 @@ function saveField(fieldPath, value){
     }
     const update = {};
     update[fieldPath] = (value === null || value === undefined) ? firebase.firestore.FieldValue.delete() : value;
-    tripDoc().update(update).catch(e=>{
+    return tripDoc().update(update).catch(e=>{
       if(e && e.code === 'not-found'){ saveState(); }
       else {
         console.error('field save failed', e);
