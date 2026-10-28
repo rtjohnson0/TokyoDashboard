@@ -1320,6 +1320,7 @@ function showTripSettings(){
       <button type="button" class="btn-cancel" id="tsDbCheck" style="width:100%;">Run database check</button>
       <div id="tsDbOut" style="display:none; margin-top:8px; font-size:12px; line-height:1.5; white-space:pre-wrap; opacity:.9;"></div>
       <button type="button" class="btn-cancel" id="tsDbClean" style="width:100%; margin-top:8px; display:none;">Remove old uploaded photos</button>
+      <button type="button" class="btn-cancel" id="tsBackups" style="width:100%; margin-top:8px;">Backups &amp; restore</button>
       <div class="form-actions">
         <button class="btn-cancel" id="tsCancel">Cancel</button>
         <button class="btn-save" id="tsSave">Save</button>
@@ -1338,6 +1339,7 @@ function showTripSettings(){
     dbClean.style.display = res.photos > 0 ? 'block' : 'none';
   };
   overlay.querySelector('#tsDbCheck').addEventListener('click', runCheck);
+  overlay.querySelector('#tsBackups').addEventListener('click', showBackups);
   dbClean.addEventListener('click', async ()=>{
     dbClean.disabled = true;
     try{ await cleanAndPushPhotos(); }catch(e){ console.error(e); }
@@ -3459,6 +3461,111 @@ function showSaveError(msg){
 // that can realistically add up that much — this checks before every save
 // so a failure is caught and explained immediately, not discovered later
 // when the data has already quietly reverted.
+/* ---------- Save indicator ----------
+   Small chip bottom-left. "Saving…" while a write is in flight, "Saved ✓" when the
+   server confirms it, and a red "NOT saved" chip (stays until tapped) if it fails. */
+function setSaveChip(state, msg){
+  let c = document.getElementById('saveChip');
+  if(!c){
+    c = document.createElement('div');
+    c.id = 'saveChip';
+    c.style.cssText = 'position:fixed; left:12px; bottom:12px; z-index:9998; padding:6px 12px; border-radius:999px; font-size:12px; font-weight:600; max-width:80vw; box-shadow:0 4px 16px rgba(0,0,0,.4); transition:opacity .3s; opacity:0; cursor:pointer;';
+    c.addEventListener('click', ()=>{ c.style.opacity = '0'; });
+    document.body.appendChild(c);
+  }
+  clearTimeout(c._t);
+  if(state === 'saving'){
+    c.style.background = '#2a2833'; c.style.color = '#cfc9d8'; c.textContent = 'Saving…'; c.style.opacity = '1';
+  } else if(state === 'saved'){
+    c.style.background = '#3FBF8F'; c.style.color = '#062016'; c.textContent = 'Saved ✓'; c.style.opacity = '1';
+    c._t = setTimeout(()=>{ c.style.opacity = '0'; }, 1600);
+  } else {
+    c.style.background = '#E5484D'; c.style.color = '#fff'; c.textContent = '⚠ NOT saved' + (msg ? ': ' + msg : '') + ' (tap to hide)'; c.style.opacity = '1';
+  }
+}
+function trackSave(promise){
+  setSaveChip('saving');
+  return promise.then(r=>{ setSaveChip('saved'); return r; }, e=>{ setSaveChip('failed', (e && e.message) ? e.message : 'unknown error'); throw e; });
+}
+
+/* ---------- Automatic backups ----------
+   Every device keeps a rolling set of copies of the synced trip data (no photos),
+   so a bad sync or overwrite can be undone from Trip settings → Backups. */
+const BACKUP_KEY = 'trip-backups-v1';
+const BACKUP_FIELDS = ['itineraryDays','dayExtras','dayNotes','dayOrder','dayRemoved','itemNotes','itemStatus','customActivities','activityOverrides','bookedIds','bookByOverrides','customBookings','expenses','packing','tripSettings','budgetTotal','dayTitleOverrides','indexKeysMigrated'];
+function loadBackups(){ try{ return JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]'); }catch(e){ return []; } }
+function backupJson(){
+  const o = {};
+  BACKUP_FIELDS.forEach(f=>{ if(sharedState[f] !== undefined) o[f] = sharedState[f]; });
+  return JSON.stringify(o, (k,v)=> (typeof v === 'string' && v.startsWith('data:')) ? undefined : v);
+}
+function maybeBackup(){
+  try{
+    const json = backupJson();
+    const list = loadBackups();
+    if(list.length && list[0].json === json) return;
+    if(list.length && Date.now() - list[0].ts < 5*60*1000) return; // at most one per 5 minutes
+    list.unshift({ ts: Date.now(), json });
+    while(list.length > 40) list.pop();
+    while(list.length){
+      try{ localStorage.setItem(BACKUP_KEY, JSON.stringify(list)); break; }
+      catch(e){ list.pop(); } // storage full: drop the oldest and retry
+    }
+  }catch(e){ console.warn('backup failed', e); }
+}
+function backupSummary(json){
+  try{
+    const o = JSON.parse(json);
+    const cnt = x => x ? Object.values(x).reduce((n,v)=> n + (Array.isArray(v) ? v.length : (v && typeof v === 'object' ? Object.values(v).reduce((m,a)=> m + (Array.isArray(a)?a.length:0),0) : 0)), 0) : 0;
+    return `${(o.itineraryDays||[]).length || 'default'} days · ${cnt(o.dayExtras)} added places · ${cnt(o.dayNotes)} day notes · ${(o.customActivities||[]).length} custom places · ${(o.expenses||[]).length} expenses`;
+  }catch(e){ return ''; }
+}
+function showBackups(){
+  const list = loadBackups();
+  const overlay = document.createElement('div');
+  overlay.className = 'surprise-overlay';
+  overlay.innerHTML = `
+    <div class="form-card">
+      <h3>Backups on this phone</h3>
+      <div class="form-hint">Restoring puts that saved copy back for both of you. Pick the newest one that still looks right.</div>
+      <div class="picker-list">${list.map((b,i)=>`
+        <div class="picker-row" data-i="${i}" style="display:block;">
+          <div style="font-weight:600;">${new Date(b.ts).toLocaleString()}</div>
+          <div style="font-size:12px; opacity:.75;">${escapeHtml(backupSummary(b.json))}</div>
+        </div>`).join('') || '<div class="empty">No backups yet. They are saved automatically while you use the app.</div>'}</div>
+      <button type="button" class="btn-cancel" id="bkDownload" style="width:100%; margin-top:8px;">Download current data as a file</button>
+      <div class="form-actions"><button class="btn-cancel" id="bkClose">Close</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#bkClose').addEventListener('click', ()=> overlay.remove());
+  overlay.querySelector('#bkDownload').addEventListener('click', ()=>{
+    const blob = new Blob([backupJson()], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'trip-backup-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+  overlay.querySelectorAll('.picker-row[data-i]').forEach(row=>{
+    row.addEventListener('click', async ()=>{
+      const b = list[+row.dataset.i];
+      if(!b) return;
+      if(!confirm('Restore the backup from ' + new Date(b.ts).toLocaleString() + '?\n\n' + backupSummary(b.json) + '\n\nThis replaces the current itinerary, notes, places and budget for both of you.')) return;
+      maybeBackup(); // keep the current state too, so this can be undone
+      const o = JSON.parse(b.json);
+      const upd = {};
+      BACKUP_FIELDS.forEach(f=>{ if(o[f] !== undefined){ sharedState[f] = o[f]; upd[f] = o[f]; } });
+      try{
+        if(firebaseReady && getTripCode() && hasLoadedRemoteState) await trackSave(tripDoc().update(upd));
+        else localStorage.setItem(LOCAL_KEY, JSON.stringify(sharedState));
+        overlay.remove();
+        renderAll();
+        showToast('Backup restored ✓');
+      }catch(e){ showSaveError('⚠️ Restore failed: ' + (e && e.message ? e.message : e)); }
+    });
+  });
+}
+
 const FIRESTORE_DOC_LIMIT = 1048576;
 function checkStateSize(){
   const byteSize = new Blob([JSON.stringify(sharedState)]).size;
@@ -3599,6 +3706,16 @@ async function runDatabaseCheck(){
     photos = Math.max(photos, remotePhotos);
     lines.push(`Server copy: ${kb(remoteSize)} of 1024 KB (${Math.round(remoteSize/FIRESTORE_DOC_LIMIT*100)}%)`);
     lines.push(`Old uploaded photos still stored: ${remotePhotos}`);
+    lines.push(Array.isArray(remote.itineraryDays)
+      ? `Itinerary on server: ${remote.itineraryDays.length} days saved`
+      : 'Itinerary on server: NOT saved (the app is showing the built-in plan)');
+    lines.push(`Server has: ${['dayExtras','dayNotes','itemNotes','dayOrder','dayRemoved'].map(k=> k + ' ' + (remote[k] ? Object.keys(remote[k]).length : 0)).join(', ')}`);
+    try{
+      await tripDoc().update({ _saveTest: Date.now() });
+      lines.push('Write test: OK (the server accepted a save)');
+    }catch(e){
+      lines.push('Write test FAILED: ' + (e && e.message ? e.message : e));
+    }
     const big = Object.keys(remote).map(k=>[k, sizeOf(remote[k])]).sort((a,b)=>b[1]-a[1]).slice(0,4);
     lines.push('Biggest sections: ' + big.map(([k,b])=> `${k} ${kb(b)}`).join(', '));
 
@@ -3630,13 +3747,20 @@ function saveState(){
   if(firebaseReady && getTripCode()){
     if(!hasLoadedRemoteState){
       console.warn('Skipped save — still waiting on the real synced data to load, to avoid overwriting it.');
+      setSaveChip('failed', 'not connected yet, change not saved');
       return;
     }
-    if(!checkStateSize()) return;
-    tripDoc().set(sharedState, {merge:true}).catch(e=>{
-      console.error('save failed', e);
-      showSaveError('⚠️ Save failed — your last change may not have synced. ' + (e && e.message ? e.message : ''));
-    });
+    if(!checkStateSize()){ setSaveChip('failed', 'trip data too large'); return; }
+    try{
+      trackSave(tripDoc().set(sharedState, {merge:true})).catch(e=>{
+        console.error('save failed', e);
+        showSaveError('⚠️ Save failed — your last change may not have synced. ' + (e && e.message ? e.message : ''));
+      });
+    }catch(e){
+      console.error('save threw', e);
+      setSaveChip('failed', e && e.message ? e.message : 'invalid data');
+      showSaveError('⚠️ Save failed: ' + (e && e.message ? e.message : e));
+    }
   } else {
     localStorage.setItem(LOCAL_KEY, JSON.stringify(sharedState));
   }
@@ -3651,11 +3775,15 @@ function saveField(fieldPath, value){
   if(firebaseReady && getTripCode()){
     if(!hasLoadedRemoteState){
       console.warn('Skipped save — still waiting on the real synced data to load, to avoid overwriting it.');
+      setSaveChip('failed', 'not connected yet, change not saved');
       return;
     }
     const update = {};
     update[fieldPath] = (value === null || value === undefined) ? firebase.firestore.FieldValue.delete() : value;
-    return tripDoc().update(update).catch(e=>{
+    let pending;
+    try{ pending = trackSave(tripDoc().update(update)); }
+    catch(e){ setSaveChip('failed', e && e.message ? e.message : 'invalid data'); showSaveError('⚠️ Save failed: ' + (e && e.message ? e.message : e)); return; }
+    return pending.catch(e=>{
       if(e && e.code === 'not-found'){ saveState(); }
       else {
         console.error('field save failed', e);
@@ -3694,6 +3822,7 @@ function connectToTrip(){
     if(doc.exists){
       sharedState = Object.assign({expenses:[], itemStatus:{}, customActivities:[], dayExtras:{}, dayNotes:{}, dayOrder:{}, dayRemoved:{}, bookedIds:{}, bookByOverrides:{}, customBookings:[], itemNotes:{}, dayTitleOverrides:{}, budgetTotal:4000, packing:null}, doc.data());
       hasLoadedRemoteState = true;
+      maybeBackup();
       // Self-heal: bring back notes/extras filed under the old numeric day keys.
       try{
         const migrated = migrateIndexKeys();
