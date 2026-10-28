@@ -1811,11 +1811,69 @@ function getDayEntries(day){
   });
 
   const savedOrder = (sharedState.dayOrder && sharedState.dayOrder[day.id]) || null;
+  // The saved order is the record of what was on the day. If it names a place
+  // that the "added places" list lost track of, bring that place back instead of
+  // silently dropping it (static plan items use keys like "sd2-0", so skip those).
+  if(savedOrder){
+    savedOrder.forEach(k=>{
+      if(entryMap[k] || /^sd?\d+-\d+$/.test(k)) return;
+      const match = allActivities().find(a=>a.id===k);
+      if(!match) return;
+      entryMap[k] = { key:k, match, label: match.name, priceStr: match.price ? formatPrice(match.price) : null };
+    });
+  }
   let order = savedOrder ? savedOrder.filter(k=>entryMap[k]) : [];
   defaultOrder.forEach(k=>{ if(!order.includes(k)) order.push(k); }); // append anything new
 
   const removed = new Set((sharedState.dayRemoved && sharedState.dayRemoved[day.id]) || []);
   return order.filter(k=>!removed.has(k)).map(k=>entryMap[k]);
+}
+
+// Items that are saved on a day but currently hidden (removed with the ✕, or
+// marked removed by an old sync). Shown so they can be put back.
+function getHiddenEntries(day){
+  const removed = new Set((sharedState.dayRemoved && sharedState.dayRemoved[day.id]) || []);
+  const out = [];
+  (day.items||[]).forEach((it, i)=>{ const key = `s${day.id}-${i}`; if(removed.has(key)) out.push({key, label: it.name}); });
+  dayExtrasFor(day.id).forEach(id=>{
+    if(!removed.has(id)) return;
+    const m = allActivities().find(a=>a.id===id);
+    if(m) out.push({key:id, label:m.name});
+  });
+  return out;
+}
+
+function showHiddenEntries(dayId){
+  const day = getItineraryDays().find(d=>d.id===dayId);
+  if(!day) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'surprise-overlay';
+  function render(){
+    const hidden = getHiddenEntries(day);
+    overlay.innerHTML = `
+      <div class="form-card">
+        <h3>Hidden on ${escapeHtml(day.date)}</h3>
+        <div class="form-hint">These are saved on this day but not showing. Tap one to put it back where it was.</div>
+        <div class="picker-list">${hidden.map(h=>`
+          <div class="picker-row" data-key="${escapeHtml(h.key)}"><span class="pr-name">${escapeHtml(h.label)}</span><span class="pr-city">Restore</span></div>`).join('') || '<div class="empty">Nothing hidden on this day.</div>'}</div>
+        ${hidden.length > 1 ? '<button type="button" class="btn-cancel" id="hidAll" style="width:100%; margin-top:8px;">Restore all</button>' : ''}
+        <div class="form-actions"><button class="btn-cancel" id="hidClose">Close</button></div>
+      </div>`;
+    overlay.querySelector('#hidClose').addEventListener('click', ()=> overlay.remove());
+    const restore = keys=>{
+      const cur = (sharedState.dayRemoved && sharedState.dayRemoved[dayId]) || [];
+      sharedState.dayRemoved[dayId] = cur.filter(k=> !keys.includes(k));
+      saveField('dayRemoved.'+dayId, sharedState.dayRemoved[dayId]);
+      renderItinerary();
+      render();
+    };
+    overlay.querySelectorAll('.picker-row[data-key]').forEach(r=> r.addEventListener('click', ()=> restore([r.dataset.key])));
+    const all = overlay.querySelector('#hidAll');
+    if(all) all.addEventListener('click', ()=> restore(hidden.map(h=>h.key)));
+  }
+  render();
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
 }
 
 function ensureDayOrder(dayId, entries){
@@ -1853,6 +1911,7 @@ function dayCardHtml(day, isFirstDay){
     ? entries.map((e,i)=> planItemLi(e, day.id, i===0, i===entries.length-1)).join('')
     : '<li style="color:var(--dim); border:none;">Open day — nothing locked in yet.</li>';
   const notesHtml = dayNotesHtml(day.id);
+  const hiddenCount = getHiddenEntries(day).length;
   const isOpen = isFirstDay ? !openDayIds.has('__closed_'+day.id) : openDayIds.has(day.id);
   const c = cityColorFor(day.city);
 
@@ -1870,6 +1929,7 @@ function dayCardHtml(day, isFirstDay){
         ${day.note?`<div class="day-note">${escapeHtml(day.note)}</div>`:''}
         <ul class="plan-list">${itemsHtml}</ul>
         <button class="add-from-explore-btn" data-day-id="${day.id}">+ Add from Explore</button>
+        ${hiddenCount ? `<button class="restore-hidden-btn" data-day-id="${day.id}" style="background:none; border:none; color:var(--amber); font-size:12px; text-decoration:underline; cursor:pointer; padding:8px 0 0;">Show ${hiddenCount} hidden item${hiddenCount===1?'':'s'} on this day</button>` : ''}
         ${day.lodging?`<div class="lodging-strip">🛏 <b>Staying:</b> ${escapeHtml(day.lodging)}</div>`:''}
         <div class="day-notes-label">Notes — tagged with who wrote them, synced for both of you</div>
         <div class="day-notes-list">${notesHtml}</div>
@@ -2125,6 +2185,9 @@ function renderItinerary(){
       e.stopPropagation();
       showDayPicker(btn.dataset.dayId);
     });
+  });
+  wrap.querySelectorAll('.restore-hidden-btn').forEach(btn=>{
+    btn.addEventListener('click', e=>{ e.stopPropagation(); showHiddenEntries(btn.dataset.dayId); });
   });
   wrap.querySelectorAll('.d-title-edit').forEach(btn=>{
     btn.addEventListener('click', e=>{
